@@ -6,13 +6,14 @@
  * row by row; see docs/KEYS.md). MENU goes to the OS's main menu, SHIFT+AC/ON switches the
  * calculator off (both after C47 has saved its state).
  * Time: a 1 kHz timer counts milliseconds and wakes the CPU from sleep().
- * Screen: gint's single VRAM; plat_present sends only the rows that changed.
+ * Screen: gint's single VRAM; plat_present sends only the rows that changed, by DMA.
  * Files: gint's POSIX calls on the storage memory, each inside gint_world_switch(), since they
  * use the OS's file system (BFile).
  */
 #include <gint/gint.h>
 #include <gint/display.h>
 #include <gint/drivers/r61524.h>
+#include <gint/dma.h>
 #include <gint/keyboard.h>
 #include <gint/timer.h>
 #include <gint/rtc.h>
@@ -87,13 +88,25 @@ void plat_init(void) {
 }
 
 
+// The DMA sends the changed rows while the CPU goes on (R61524_DMA, as gint's own dupdate();
+// R61524_DMA_WAIT polls with the DMA's interrupt off, which our emulator doesn't complete);
+// the next drawing waits for it to finish reading the VRAM.
 uint16_t *plat_framebuffer(void) {
+  dma_transfer_wait(0);
   return gint_vram;
 }
 
 
+// The DMA moves 32-byte units and needs its source on a 32-byte boundary; a row is 792 bytes,
+// so a band must start and end on a multiple of 4 rows (otherwise the DMA flags an address
+// error, transfers nothing, and the next wait for it never returns).
 void plat_present(int y, int height) {
-  r61524_display(gint_vram, y, height, R61524_DMA_WAIT);
+  int top = y & ~3;
+  int bottom = (y + height + 3) & ~3;
+  if(bottom > DHEIGHT) {
+    bottom = DHEIGHT;
+  }
+  r61524_display(gint_vram, top, bottom - top, R61524_DMA);
 }
 
 
@@ -103,8 +116,19 @@ uint32_t plat_ms(void) {
 
 
 // DMCP sends one release (0) when the keys are let go; a press while another key is held
-// is a new press.
-static int held = 0;
+// is a new press. The release is decided from gint's key state (is any mapped key still
+// down?), not by counting presses and releases: a key already down when the add-in starts
+// (the EXE that launched it) has a release without a press.
+static bool anyMappedKeyDown(void) {
+  for(int k = 0; k < 256; k++) {
+    if(keymap[k] && keydown(k)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool pressSent = false;
 
 int plat_next_key(void) {
   for(;;) {
@@ -121,16 +145,14 @@ int plat_next_key(void) {
       }
       int k = keymap[ev.key & 0xff];
       if(k) {
-        held++;
+        pressSent = true;
         return k;
       }
     }
     else if(ev.type == KEYEV_UP) {
-      if(keymap[ev.key & 0xff] && held > 0) {
-        held--;
-        if(held == 0) {
-          return 0;
-        }
+      if(pressSent && keymap[ev.key & 0xff] && !anyMappedKeyDown()) {
+        pressSent = false;
+        return 0;
       }
     }
   }
@@ -151,14 +173,14 @@ void plat_wait(uint32_t ms) {
 
 void plat_os_menu(void) {
   gint_osmenu();
-  held = 0;
+  pressSent = false;
   clearevents();
 }
 
 
 void plat_power_off(void) {
   gint_poweroff(true);
-  held = 0;
+  pressSent = false;
   clearevents();
 }
 
