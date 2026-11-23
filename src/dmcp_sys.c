@@ -201,6 +201,17 @@ static bool_t minuteChanged(void) {
 }
 
 
+// After fnSaveAuto and a trip to the OS: the save wrote "Saving state file ..." over the
+// status bar and set a full redraw (screenUpdatingMode = SCRUPD_AUTO) that C47 would only do
+// at the next key; do it now, and show the whole screen again over what the OS drew.
+static void redrawAfterSave(void) {
+  refreshScreen(0);
+  lcd_forced_refresh();
+  view_all_changed();
+  plat_flush();
+}
+
+
 // Leave for the OS (main menu or power off) from the run loop, where C47's state is
 // consistent: save it first, since from the main menu the user may start another add-in and
 // this one would start afresh.
@@ -217,9 +228,7 @@ static void doOsRequest(void) {
   key_pop_all();
   lastMinute = -1;
   autoOffStart = plat_ms();
-  lcd_forced_refresh();
-  view_all_changed();
-  plat_flush();
+  redrawAfterSave();
 }
 
 
@@ -231,7 +240,7 @@ void sys_sleep(void) {
     fnSaveAuto(0);
     plat_power_off();
     key_pop_all();
-    view_all_changed();
+    redrawAfterSave();
     CLR_ST(STAT_PGM_END);
     autoOffStart = plat_ms();
     lastMinute = -1;

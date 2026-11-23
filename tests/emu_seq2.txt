@@ -1,0 +1,17 @@
+# the same keys as the emulator run of 2026-11-23 (c47_probe_test.go), for comparison
+wait 2000
+key EXIT
+wait 500
+key 1 SHIFT_F 7
+wait 500
+shot out/e2_sin.ppm
+key SHIFT_F ENTER
+wait 500
+shot out/e2_cpx.ppm
+key EXIT SHIFT_F CHS
+wait 500
+key EXIT SHIFT_G 7
+wait 500
+key EXIT 4 2 ENTER
+wait 500
+shot out/e2_42.ppm
