@@ -34,6 +34,7 @@ set(SOURCES
   src/plat_gint.c
   src/gmp/mini-gmp.c
   src/gmp/mini-gmp-extra.c
+  src/compat/compat.c
 )
 
 add_executable(c47 ${SOURCES})
@@ -42,6 +43,7 @@ target_include_directories(c47 PRIVATE
   src
   src/dmcp
   src/gmp
+  src/compat
   ${C47_GENERATED}
   ${C47_UPSTREAM}/src/c47
   ${C47_UPSTREAM}/dep/decNumberICU
@@ -57,6 +59,7 @@ target_compile_definitions(c47 PRIVATE
 target_compile_options(c47 PRIVATE
   -Os -fsigned-char -fno-strict-aliasing -ffunction-sections -fdata-sections
   -Wno-unused-parameter
+  -include ${CMAKE_CURRENT_SOURCE_DIR}/src/compat/compat.h
 )
 target_link_options(c47 PRIVATE -Wl,--gc-sections)
 target_link_libraries(c47 Gint::Gint -lm)
