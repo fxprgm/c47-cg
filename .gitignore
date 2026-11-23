@@ -1,0 +1,7 @@
+upstream/
+build/
+build-cg/
+*.g3a
+__pycache__/
+tests/out/
+tests/host_files/

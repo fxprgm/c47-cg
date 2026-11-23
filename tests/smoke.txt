@@ -1,0 +1,9 @@
+# boot, then 2 ENTER 3 + and 1.5 SQRT-ish keys
+wait 3000
+shot out/boot.ppm
+key 2 ENTER 3 ADD
+wait 500
+shot out/add.ppm
+key 7 DIV
+wait 500
+shot out/div.ppm
