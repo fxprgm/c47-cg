@@ -1,0 +1,598 @@
+diff --git a/src/c47/config.c b/src/c47/config.c
+index 36f3dd9..e200742 100644
+--- a/src/c47/config.c
++++ b/src/c47/config.c
+@@ -1529,7 +1529,12 @@ void addTestPrograms(void) {
+     }
+     else {
+       UINT bytesRead;
+-      f_read(ppgm_fp, &numberOfBytesUsed,   sizeof(numberOfBytesUsed), &bytesRead);
++      uint8_t sizeLE[4] = {0, 0, 0, 0}; // the file's size word is little-endian whatever the CPU
++      f_read(ppgm_fp, sizeLE,               sizeof(sizeLE),            &bytesRead);
++      numberOfBytesUsed = sizeLE[0] | (sizeLE[1] << 8) | ((uint32_t)sizeLE[2] << 16) | ((uint32_t)sizeLE[3] << 24);
++      if(numberOfBytesUsed > numberOfBytesForTheTestPrograms) {
++        numberOfBytesUsed = 0; // not a testPgms.bin this build can hold: read nothing rather than past the program area
++      }
+       f_read(ppgm_fp, beginOfProgramMemory, numberOfBytesUsed,         &bytesRead);
+       f_close(ppgm_fp);
+ 
+@@ -1550,7 +1555,9 @@ void addTestPrograms(void) {
+       freeProgramBytes = numberOfBytesForTheTestPrograms - 2;
+     }
+     else {
+-      ignoreReturnedValue(fread(&numberOfBytesUsed, 1, sizeof(numberOfBytesUsed), testPgms));
++      uint8_t sizeLE[4] = {0, 0, 0, 0}; // the file's size word is little-endian whatever the CPU
++      ignoreReturnedValue(fread(sizeLE, 1, sizeof(sizeLE), testPgms));
++      numberOfBytesUsed = sizeLE[0] | (sizeLE[1] << 8) | ((uint32_t)sizeLE[2] << 16) | ((uint32_t)sizeLE[3] << 24);
+       printf("%u bytes\n", numberOfBytesUsed);
+       if(numberOfBytesUsed > numberOfBytesForTheTestPrograms) {
+         printf("Increase allocated memory for programs! File config.c 1st line of function addTestPrograms\n");
+diff --git a/src/c47/mathematics/random.c b/src/c47/mathematics/random.c
+index 807b842..3617cdd 100644
+--- a/src/c47/mathematics/random.c
++++ b/src/c47/mathematics/random.c
+@@ -204,7 +204,6 @@ void fnRandom(uint16_t unusedButMandatoryParameter) {
+ void fnSeed(uint16_t unusedButMandatoryParameter) {
+   uint64_t seed=0, sequ=0;
+   real_t regX;
+-  unsigned char *p = (unsigned char *)regX.lsu;
+ 
+   if(!saveLastX()) {
+     return;
+@@ -217,8 +216,12 @@ void fnSeed(uint16_t unusedButMandatoryParameter) {
+ 
+   fnDrop(NOPARAM);
+ 
+-  memcpy(&seed, p, sizeof(seed));
+-  memcpy(&sequ, p + sizeof(seed), sizeof(sequ));
++  // The first 8 units of X's coefficient, assembled as a little-endian machine would see them in memory, so a SEED gives the same sequence on
++  // every CPU (decNumberUnit is 16 bits with DECDPUN 3).
++  for(int i = 3; i >= 0; i--) {
++    seed = (seed << 16) | (uint16_t)regX.lsu[i];
++    sequ = (sequ << 16) | (uint16_t)regX.lsu[i + 4];
++  }
+ 
+   if(seed == 0 && sequ == 0) {
+     #if defined(TESTSUITE_BUILD)
+diff --git a/src/c47/programming/decode.c b/src/c47/programming/decode.c
+index 110f709..3e3a2e5 100644
+--- a/src/c47/programming/decode.c
++++ b/src/c47/programming/decode.c
+@@ -564,7 +564,7 @@ static void decodeLiteral(uint8_t *literalAddress) {
+   switch(*(literalAddress++)) {
+     case BINARY_SHORT_INTEGER: {
+       reallocateRegister(TEMP_REGISTER_1, dtShortInteger, 0, *(uint8_t *)(literalAddress++));
+-      xcopy(getRegisterDataPointer(TEMP_REGISTER_1), literalAddress, TO_BYTES(SHORT_INTEGER_SIZE_IN_BLOCKS));
++      *(REGISTER_SHORT_INTEGER_DATA(TEMP_REGISTER_1)) = programLiteralToUInt64(literalAddress);
+       shortIntegerToDisplayString(TEMP_REGISTER_1, tmpString, false, noBaseOverride, SCREEN_WIDTH);
+       break;
+     }
+@@ -575,15 +575,15 @@ static void decodeLiteral(uint8_t *literalAddress) {
+ 
+     case BINARY_REAL34: {
+       real34_t realLiteral;
+-      xcopy(&realLiteral, literalAddress, REAL34_SIZE_IN_BYTES);
++      programLiteralToReal34(literalAddress, &realLiteral);
+       real34ToDisplayString(&realLiteral, amNone, tmpString, &standardFont, 9999, 34, !LIMITEXP, !FRONTSPACE, NOIRFRAC);
+       break;
+     }
+ 
+     case BINARY_COMPLEX34: {
+       complex34_t complexLiteral;
+-      xcopy(VARIABLE_REAL34_DATA(&complexLiteral), literalAddress                       , REAL34_SIZE_IN_BYTES);
+-      xcopy(VARIABLE_IMAG34_DATA(&complexLiteral), literalAddress + REAL34_SIZE_IN_BYTES, REAL34_SIZE_IN_BYTES);
++      programLiteralToReal34(literalAddress,                        VARIABLE_REAL34_DATA(&complexLiteral));
++      programLiteralToReal34(literalAddress + REAL34_SIZE_IN_BYTES, VARIABLE_IMAG34_DATA(&complexLiteral));
+       complex34ToDisplayString(&complexLiteral, tmpString, &standardFont, 9999, 34, !LIMITEXP, !FRONTSPACE, NOIRFRAC, currentAngularMode, getSystemFlag(FLAG_POLAR), EXP_STEP_OFF);
+       break;
+     }
+diff --git a/src/c47/programming/lblGtoXeq.c b/src/c47/programming/lblGtoXeq.c
+index 4bc0884..23456e2 100755
+--- a/src/c47/programming/lblGtoXeq.c
++++ b/src/c47/programming/lblGtoXeq.c
+@@ -601,7 +601,7 @@ static void _putLiteral(uint8_t *literalAddress) {
+       liftStack();
+       setSystemFlag(FLAG_ASLIFT);
+       reallocateRegister(REGISTER_X, dtShortInteger, 0, *(uint8_t *)(literalAddress++));
+-      xcopy(getRegisterDataPointer(REGISTER_X), literalAddress, TO_BYTES(SHORT_INTEGER_SIZE_IN_BLOCKS));
++      *(REGISTER_SHORT_INTEGER_DATA(REGISTER_X)) = programLiteralToUInt64(literalAddress);
+       break;
+       }
+ 
+@@ -611,7 +611,7 @@ static void _putLiteral(uint8_t *literalAddress) {
+ 
+       case BINARY_REAL34: {
+       real34_t realLiteral;
+-      xcopy(&realLiteral, literalAddress, REAL34_SIZE_IN_BYTES);
++      programLiteralToReal34(literalAddress, &realLiteral);
+       liftStack();
+       setSystemFlag(FLAG_ASLIFT);
+       convertReal34ToReal34Register(&realLiteral, REGISTER_X);
+@@ -623,8 +623,8 @@ static void _putLiteral(uint8_t *literalAddress) {
+         liftStack();
+         setSystemFlag(FLAG_ASLIFT);
+         reallocateRegister(REGISTER_X, dtComplex34, 0, amNone);
+-        xcopy(VARIABLE_REAL34_DATA(&complexLiteral), literalAddress                       , REAL34_SIZE_IN_BYTES);
+-        xcopy(VARIABLE_IMAG34_DATA(&complexLiteral), literalAddress + REAL34_SIZE_IN_BYTES, REAL34_SIZE_IN_BYTES);
++        programLiteralToReal34(literalAddress,                        VARIABLE_REAL34_DATA(&complexLiteral));
++        programLiteralToReal34(literalAddress + REAL34_SIZE_IN_BYTES, VARIABLE_IMAG34_DATA(&complexLiteral));
+         complex34Copy(&complexLiteral, REGISTER_COMPLEX34_DATA(REGISTER_X));
+         break;
+       }
+diff --git a/src/c47/programming/manage.c b/src/c47/programming/manage.c
+index c5a9290..cb1577a 100644
+--- a/src/c47/programming/manage.c
++++ b/src/c47/programming/manage.c
+@@ -788,6 +788,39 @@ void fnPem(uint16_t unusedButMandatoryParameter) {
+ 
+ 
+ 
++#if !defined(DECLITEND)
++  #define DECLITEND 1 // decNumberLocal.h's default
++#endif // !DECLITEND
++
++void programLiteralFromUInt64(uint8_t *literal, uint64_t value) {
++  for(unsigned int i = 0; i < sizeof(uint64_t); ++i) {
++    literal[i] = (uint8_t)(value >> (8 * i));
++  }
++}
++
++uint64_t programLiteralToUInt64(const uint8_t *literal) {
++  uint64_t value = 0;
++  for(unsigned int i = sizeof(uint64_t); i > 0; --i) {
++    value = (value << 8) | literal[i - 1];
++  }
++  return value;
++}
++
++void programLiteralFromReal34(uint8_t *literal, const real34_t *value) {
++  const uint8_t *bytes = (const uint8_t *)value;
++  for(unsigned int i = 0; i < REAL34_SIZE_IN_BYTES; ++i) {
++    literal[i] = bytes[DECLITEND ? i : REAL34_SIZE_IN_BYTES - 1 - i];
++  }
++}
++
++void programLiteralToReal34(const uint8_t *literal, real34_t *value) {
++  uint8_t *bytes = (uint8_t *)value;
++  for(unsigned int i = 0; i < REAL34_SIZE_IN_BYTES; ++i) {
++    bytes[DECLITEND ? i : REAL34_SIZE_IN_BYTES - 1 - i] = literal[i];
++  }
++}
++
++
+ static void _insertInProgram(const uint8_t *dat, uint16_t size) {
+   //#define printarr(fmt, dat, len) for (uint16_t i = 0; i < len; i++) printf(fmt, dat[i])
+   //printarr("%d ", dat, size);
+@@ -1287,9 +1320,8 @@ void pemCloseNumberInput(void) {
+               val += numBuffer[i] - 'a' + 10;
+             }
+           }
+-          for(unsigned int i = 0; i < sizeof(uint64_t); ++i) {
+-            *(tmpPtr++) = ((uint8_t *)(&val))[i];
+-          }
++          programLiteralFromUInt64((uint8_t *)tmpPtr, val);
++          tmpPtr += sizeof(uint64_t);
+           _insertInProgram((uint8_t *)tmpString, (int32_t)(tmpPtr - tmpString));
+           doneWithBinaryLiteral = true;
+         }
+@@ -1312,9 +1344,8 @@ void pemCloseNumberInput(void) {
+           else {
+             stringToReal34(numBuffer, &val);
+           }
+-          for(unsigned int i = 0; i < REAL34_SIZE_IN_BYTES; ++i) {
+-            *(tmpPtr++) = ((uint8_t *)(&val))[i];
+-          }
++          programLiteralFromReal34((uint8_t *)tmpPtr, &val);
++          tmpPtr += REAL34_SIZE_IN_BYTES;
+           _insertInProgram((uint8_t *)tmpString, (int32_t)(tmpPtr - tmpString));
+           doneWithBinaryLiteral = true;
+         }
+@@ -1358,12 +1389,10 @@ void pemCloseNumberInput(void) {
+           }
+ 
+           *(tmpPtr++) = BINARY_COMPLEX34;
+-          for(unsigned int i = 0; i < REAL34_SIZE_IN_BYTES; ++i) {
+-            *(tmpPtr++) = ((uint8_t *)(&re))[i];
+-          }
+-          for(unsigned int i = 0; i < REAL34_SIZE_IN_BYTES; ++i) {
+-            *(tmpPtr++) = ((uint8_t *)(&im))[i];
+-          }
++          programLiteralFromReal34((uint8_t *)tmpPtr, &re);
++          tmpPtr += REAL34_SIZE_IN_BYTES;
++          programLiteralFromReal34((uint8_t *)tmpPtr, &im);
++          tmpPtr += REAL34_SIZE_IN_BYTES;
+           _insertInProgram((uint8_t *)tmpString, (int32_t)(tmpPtr - tmpString));
+           doneWithBinaryLiteral = true;
+         }
+diff --git a/src/c47/programming/manage.h b/src/c47/programming/manage.h
+index 595c4bc..6a264ce 100644
+--- a/src/c47/programming/manage.h
++++ b/src/c47/programming/manage.h
+@@ -36,6 +36,14 @@
+   bool_t         isAtEndOfPrograms             (const uint8_t *step); // check for .END.
+   bool_t         checkOpCodeOfStep             (const uint8_t *step, uint16_t op);
+ 
++  // Program literals (BINARY_SHORT_INTEGER, BINARY_REAL34, BINARY_COMPLEX34) are stored little-endian, the byte order every C47 has written them in:
++  // program memory goes byte for byte into program files, state files and testPgms.bin, so a big-endian CPU (or a DECLITEND=0 decNumber, whose
++  // decQuads are big-endian) converts at the two ends instead of writing its own order.
++  void           programLiteralFromUInt64      (uint8_t *literal, uint64_t value);
++  uint64_t       programLiteralToUInt64        (const uint8_t *literal);
++  void           programLiteralFromReal34      (uint8_t *literal, const real34_t *value);
++  void           programLiteralToReal34        (const uint8_t *literal, real34_t *value);
++
+   static inline bool_t isAtEndOfProgram        (const uint8_t *step) { // check for END
+     return checkOpCodeOfStep(step, ITM_END);
+   }
+diff --git a/src/c47/saveRestoreCalcState.c b/src/c47/saveRestoreCalcState.c
+index 1861fdd..94cde07 100644
+--- a/src/c47/saveRestoreCalcState.c
++++ b/src/c47/saveRestoreCalcState.c
+@@ -1229,7 +1229,8 @@ void doSave(uint16_t saveType) {
+   save(tmpString, strlen(tmpString));
+ 
+   for(i=0; i<currentSizeInBlocks; i++) {
+-    sprintf(tmpString, "%" PRIu32 "\n", *(((uint32_t *)(beginOfProgramMemory)) + i));
++    const uint8_t *word = beginOfProgramMemory + TO_BYTES(i);   // little-endian whatever the CPU, as every C47 has written this section
++    sprintf(tmpString, "%" PRIu32 "\n", word[0] | ((uint32_t)word[1] << 8) | ((uint32_t)word[2] << 16) | ((uint32_t)word[3] << 24));
+     save(tmpString, strlen(tmpString));
+   }
+ 
+@@ -2698,12 +2699,13 @@ int64_t stringToInt64(const char *str) {
+         readLine(tmpString, TMP_STR_LENGTH); // One block
+         // No end-of-file break here, on purpose: this loop writes into memory resizeProgramMemory() sized from the same count, and stopping short would leave
+         // the tail of program memory holding whatever the resize left. The empty reads past end of file zero it instead, which is the safer of the two.
++        uint32_t tmpBlock = toUint32(tmpString);
++        uint8_t blockLE[4] = {(uint8_t)tmpBlock, (uint8_t)(tmpBlock >> 8), (uint8_t)(tmpBlock >> 16), (uint8_t)(tmpBlock >> 24)}; // see the writer
+         if(programsLoadMode == LM_ALL) {
+-          *(((uint32_t *)(beginOfProgramMemory)) + i) = toUint32(tmpString);
++          xcopy(beginOfProgramMemory + TO_BYTES(i), blockLE, 4);
+         }
+         else if(programsLoadMode == LM_PROGRAMS) {
+-          uint32_t tmpBlock = toUint32(tmpString);
+-          xcopy(oldFirstFreeProgramByte + TO_BYTES(i), (uint8_t *)(&tmpBlock), 4);
++          xcopy(oldFirstFreeProgramByte + TO_BYTES(i), blockLE, 4);
+         }
+       }
+ 
+diff --git a/src/c47/screen.c b/src/c47/screen.c
+index 8231f9f..cb0a8ec 100644
+--- a/src/c47/screen.c
++++ b/src/c47/screen.c
+@@ -6802,77 +6802,77 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
+     fwrite("BM", 1, 2, bmp);        // Offset 0x00  0  BMP header
+ 
+     uint32 = ((SCREEN_WIDTH/8 + 2) * yRows) + 0x82;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x02  2  File size
++    fwriteLE32(uint32, bmp);     // Offset 0x02  2  File size
+ 
+     uint32 = 0;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x06  6  unused
++    fwriteLE32(uint32, bmp);     // Offset 0x06  6  unused
+ 
+     uint32 = 0x00000082;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x0a 10  Offset where the bitmap data can be found
++    fwriteLE32(uint32, bmp);     // Offset 0x0a 10  Offset where the bitmap data can be found
+ 
+     uint32 = 0x0000006c;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x0e 14  Number of bytes in DIB header
++    fwriteLE32(uint32, bmp);     // Offset 0x0e 14  Number of bytes in DIB header
+ 
+     uint32 = SCREEN_WIDTH;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x12 18  Bitmap width
++    fwriteLE32(uint32, bmp);     // Offset 0x12 18  Bitmap width
+ 
+     uint32 = yRows;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x16 22  Bitmap height
++    fwriteLE32(uint32, bmp);     // Offset 0x16 22  Bitmap height
+ 
+     uint16 = 0x0001;
+-    fwrite(&uint16, 1, 2, bmp);     // Offset 0x1a 26  Number of planes
++    fwriteLE16(uint16, bmp);     // Offset 0x1a 26  Number of planes
+ 
+     uint16 = 0x0001;
+-    fwrite(&uint16, 1, 2, bmp);     // Offset 0x1c 28  Number of bits per pixel
++    fwriteLE16(uint16, bmp);     // Offset 0x1c 28  Number of bits per pixel
+ 
+     uint32 = 0;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x1e 30  Compression
++    fwriteLE32(uint32, bmp);     // Offset 0x1e 30  Compression
+ 
+     uint32 = (SCREEN_WIDTH/8 + 2) * yRows;   // 0x30c0 for the whole screen, the literal this replaces; the row is 50 bytes of pixels and 2 of padding, 52 in all
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x22 34  Size of bitmap data (including padding)
++    fwriteLE32(uint32, bmp);     // Offset 0x22 34  Size of bitmap data (including padding)
+ 
+     uint32 = 0x00000b13; // 2835 pixels/m (72 dpi), same as DMCP standardScreenDump so sim and hardware BMPs compare identical. Was 0x1a7c = 6780 pixels/m, chosen for life-size printing: 400 px / 6780 px/m = 59.0 mm, the physical LCD width
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x26 38  Horizontal print resolution
++    fwriteLE32(uint32, bmp);     // Offset 0x26 38  Horizontal print resolution
+ 
+     uint32 = 0x00000b13; // 2835 pixels/m (72 dpi), same as DMCP standardScreenDump so sim and hardware BMPs compare identical. Was 0x1a7c = 6780 pixels/m, chosen for life-size printing: 400 px / 6780 px/m = 59.0 mm, the physical LCD width
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x2a 42  Vertical print resolution
++    fwriteLE32(uint32, bmp);     // Offset 0x2a 42  Vertical print resolution
+ 
+     uint32 = 0x00000002;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x2e 46  Number of colors in the palette
++    fwriteLE32(uint32, bmp);     // Offset 0x2e 46  Number of colors in the palette
+ 
+     uint32 = 0x00000002;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x32 50  Number of important colors
++    fwriteLE32(uint32, bmp);     // Offset 0x32 50  Number of important colors
+ 
+     uint32 = 0x73524742;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x36  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x36  ???
+ 
+     uint32 = 0;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x3a  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x3e  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x42  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x46  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x4a  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x4e  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x52  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x56  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x5a  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x5e  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x62  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x66  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x3a  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x3e  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x42  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x46  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x4a  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x4e  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x52  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x56  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x5a  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x5e  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x62  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x66  ???
+ 
+     uint32 = 0x00000002;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x6a  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x6a  ???
+ 
+     uint32 = 0;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x6e  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x72  ???
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x76  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x6e  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x72  ???
++    fwriteLE32(uint32, bmp);     // Offset 0x76  ???
+ 
+     uint32 = 0x00dff5cc; // light green
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x7a  RGB color for 0
++    fwriteLE32(uint32, bmp);     // Offset 0x7a  RGB color for 0
+ 
+     uint32 = 0;
+-    fwrite(&uint32, 1, 4, bmp);     // Offset 0x7e  RGB color for 1
++    fwriteLE32(uint32, bmp);     // Offset 0x7e  RGB color for 1
+ 
+     // Offset 0x82  bit map data
+     uint16 = 0;
+@@ -6889,7 +6889,7 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
+           uint8 = 0;
+         }
+       }
+-      fwrite(&uint16, 1, 2, bmp); // Padding
++      fwriteLE16(uint16, bmp); // Padding
+     }
+ 
+ 
+diff --git a/src/c47/screen.h b/src/c47/screen.h
+index 806b71a..ddfb796 100755
+--- a/src/c47/screen.h
++++ b/src/c47/screen.h
+@@ -262,4 +262,16 @@
+   void     showShiftStateF                    (void);
+   void     showShiftStateG                    (void);
+   void     displayShiftAndTamBuffer           (void);
++
++  #if defined(PC_BUILD)
++    // BMP files are little-endian whatever the CPU (fnScreenDump, fnMenuDump)
++    static inline void fwriteLE32(uint32_t value, FILE *f) {
++      uint8_t b[4] = {(uint8_t)value, (uint8_t)(value >> 8), (uint8_t)(value >> 16), (uint8_t)(value >> 24)};
++      fwrite(b, 1, 4, f);
++    }
++    static inline void fwriteLE16(uint16_t value, FILE *f) {
++      uint8_t b[2] = {(uint8_t)value, (uint8_t)(value >> 8)};
++      fwrite(b, 1, 2, f);
++    }
++  #endif // PC_BUILD
+ #endif // !SCREEN_H
+diff --git a/src/c47/softmenus.c b/src/c47/softmenus.c
+index a7dcd80..5fa2684 100644
+--- a/src/c47/softmenus.c
++++ b/src/c47/softmenus.c
+@@ -4505,77 +4505,77 @@ void fnMenuDump(uint16_t menu, uint16_t item, uint16_t newFilenameformat, const
+   fwrite("BM", 1, 2, bmp);        // Offset 0x00  0  BMP header
+ 
+   uint32 = ((SCREEN_WIDTH/8 + 2) * (SCREEN_HEIGHT-171)) + 0x82;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x02  2  File size
++  fwriteLE32(uint32, bmp);     // Offset 0x02  2  File size
+ 
+   uint32 = 0;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x06  6  unused
++  fwriteLE32(uint32, bmp);     // Offset 0x06  6  unused
+ 
+   uint32 = 0x00000082;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x0a 10  Offset where the bitmap data can be found
++  fwriteLE32(uint32, bmp);     // Offset 0x0a 10  Offset where the bitmap data can be found
+ 
+   uint32 = 0x0000006c;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x0e 14  Number of bytes in DIB header
++  fwriteLE32(uint32, bmp);     // Offset 0x0e 14  Number of bytes in DIB header
+ 
+   uint32 = SCREEN_WIDTH;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x12 18  Bitmap width
++  fwriteLE32(uint32, bmp);     // Offset 0x12 18  Bitmap width
+ 
+   uint32 = SCREEN_HEIGHT-171;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x16 22  Bitmap height
++  fwriteLE32(uint32, bmp);     // Offset 0x16 22  Bitmap height
+ 
+   uint16 = 0x0001;
+-  fwrite(&uint16, 1, 2, bmp);     // Offset 0x1a 26  Number of planes
++  fwriteLE16(uint16, bmp);     // Offset 0x1a 26  Number of planes
+ 
+   uint16 = 0x0001;
+-  fwrite(&uint16, 1, 2, bmp);     // Offset 0x1c 28  Number of bits per pixel
++  fwriteLE16(uint16, bmp);     // Offset 0x1c 28  Number of bits per pixel
+ 
+   uint32 = 0;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x1e 30  Compression
++  fwriteLE32(uint32, bmp);     // Offset 0x1e 30  Compression
+ 
+   uint32 = (SCREEN_WIDTH/8 + 2) * (SCREEN_HEIGHT-171);
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x22 34  Size of bitmap data (including padding)
++  fwriteLE32(uint32, bmp);     // Offset 0x22 34  Size of bitmap data (including padding)
+ 
+   uint32 = 0x00000b13; // 2835 pixels/m (72 dpi), same as DMCP standardScreenDump so sim and hardware BMPs compare identical. Was 0x1a7c = 6780 pixels/m, chosen for life-size printing: 400 px / 6780 px/m = 59.0 mm, the physical LCD width
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x26 38  Horizontal print resolution
++  fwriteLE32(uint32, bmp);     // Offset 0x26 38  Horizontal print resolution
+ 
+   uint32 = 0x00000b13; // 2835 pixels/m (72 dpi), same as DMCP standardScreenDump so sim and hardware BMPs compare identical. Was 0x1a7c = 6780 pixels/m, chosen for life-size printing: 400 px / 6780 px/m = 59.0 mm, the physical LCD width
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x2a 42  Vertical print resolution
++  fwriteLE32(uint32, bmp);     // Offset 0x2a 42  Vertical print resolution
+ 
+   uint32 = 0x00000002;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x2e 46  Number of colors in the palette
++  fwriteLE32(uint32, bmp);     // Offset 0x2e 46  Number of colors in the palette
+ 
+   uint32 = 0x00000002;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x32 50  Number of important colors
++  fwriteLE32(uint32, bmp);     // Offset 0x32 50  Number of important colors
+ 
+   uint32 = 0x73524742;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x36  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x36  ???
+ 
+   uint32 = 0;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x3a  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x3e  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x42  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x46  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x4a  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x4e  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x52  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x56  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x5a  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x5e  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x62  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x66  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x3a  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x3e  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x42  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x46  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x4a  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x4e  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x52  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x56  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x5a  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x5e  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x62  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x66  ???
+ 
+   uint32 = 0x00000002;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x6a  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x6a  ???
+ 
+   uint32 = 0;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x6e  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x72  ???
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x76  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x6e  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x72  ???
++  fwriteLE32(uint32, bmp);     // Offset 0x76  ???
+ 
+   uint32 = 0x00dff5cc; // light green
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x7a  RGB color for 0
++  fwriteLE32(uint32, bmp);     // Offset 0x7a  RGB color for 0
+ 
+   uint32 = 0;
+-  fwrite(&uint32, 1, 4, bmp);     // Offset 0x7e  RGB color for 1
++  fwriteLE32(uint32, bmp);     // Offset 0x7e  RGB color for 1
+ 
+   // Offset 0x82  bit map data
+   uint16 = 0;
+@@ -4592,7 +4592,7 @@ void fnMenuDump(uint16_t menu, uint16_t item, uint16_t newFilenameformat, const
+         uint8 = 0;
+       }
+     }
+-    fwrite(&uint16, 1, 2, bmp); // Padding
++    fwriteLE16(uint16, bmp); // Padding
+   }
+ 
+ 
+diff --git a/src/testSuite/testSuite.c b/src/testSuite/testSuite.c
+index ea1e596..1dfcc9f 100644
+--- a/src/testSuite/testSuite.c
++++ b/src/testSuite/testSuite.c
+@@ -80,6 +80,7 @@ void covDerivErr(uint16_t which);
+ void covSolveErr(uint16_t which);
+ void covLoadPgm(uint16_t unusedButMandatoryParameter);
+ void covLoadPgmLongLabel(uint16_t unusedButMandatoryParameter);
++void covLoadLiteralPgm(uint16_t unusedButMandatoryParameter);
+ void covLoadStateLongLabel(uint16_t unusedButMandatoryParameter);
+ void covIterationTi(uint16_t which);
+ void covComparisonTi(uint16_t which);
+@@ -342,6 +343,7 @@ const funcTest_t funcTestNoParam[] = {
+   {"fnErrThenUndoCov",           covErrThenUndo,              1 },
+   {"fnMvarPageNoPgmCov",         covMvarPageNoProgram,        1 },
+   {"fnLoadPgmLongLabelCov",      covLoadPgmLongLabel,         1 },
++  {"fnLoadLiteralPgmCov",        covLoadLiteralPgm,           1 },
+   {"fnLoadStateLongLabelCov",    covLoadStateLongLabel,       1 },
+   {"fnIterationTiCov",           covIterationTi,              1 },
+   {"fnNamedVarFoldCov",          covNamedVariableFold,        1 },
+@@ -2701,6 +2703,21 @@ void covNamedVariableCache(uint16_t unusedButMandatoryParameter) {
+   }
+ }
+ 
++void covLoadLiteralPgm(uint16_t unusedButMandatoryParameter) {
++  // Program LT holds the three binary literals with their bytes as a little-endian C47 writes them to a program file (the decQuads are
++  // const34_2, const34_3 and const34_4 of a little-endian build). The file format is the program's bytes, so this pins that format:
++  // a big-endian build (or one with a DECLITEND=0 decNumber) must read the same numbers back, as from any C47's .p47 file.
++  static const uint8_t pgmLT[] = {
++    ITM_LBL, STRING_LABEL_VARIABLE, 2, 'L', 'T',
++    ITM_LITERAL, BINARY_SHORT_INTEGER, 16, 0x08,0x07,0x06,0x05,0x04,0x03,0x02,0x01,                                     // 102030405060708#16
++    ITM_LITERAL, BINARY_REAL34, 0x02,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0x08,0x22,                                             // 2
++    ITM_LITERAL, BINARY_COMPLEX34, 0x03,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0x08,0x22, 0x04,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0x08,0x22, // 3 i 4
++    ITM_RTN,
++    (uint8_t)((ITM_END >> 8) | 0x80), (uint8_t)(ITM_END & 0xff),
++  };
++  covWriteAndLoadPgm(pgmLT, sizeof(pgmLT));
++}
++
+ void covLoadPgmLongLabel(uint16_t unusedButMandatoryParameter) {
+   // A program file can claim a label name longer than the calculator can produce (TAM caps a name at 7 glyphs
+   // of at most 2 bytes, MAX_LABEL_NAME_LENGTH in defines.h); fnLoadProgram screens the file in a first pass,
+diff --git a/src/testSuite/tests/pgm_literal_endian.txt b/src/testSuite/tests/pgm_literal_endian.txt
+new file mode 100644
+index 0000000..a3c2996
+--- /dev/null
++++ b/src/testSuite/tests/pgm_literal_endian.txt
+@@ -0,0 +1,13 @@
++;*************************************************************
++;* Binary program literals in the byte order of the program  *
++;* file format (little-endian), whatever the CPU            *
++;*************************************************************
++In: FL_SPCRES=0 FL_CPXRES=1 SD=0 RMODE=0 IM=2compl SS=4 WS=64
++
++; load program LT (three binary literals, written as a little-endian C47 writes them), run it, check what lands on the stack
++Func: fnLoadLiteralPgmCov
++In:  FARG=0
++Out: EC=0
++Func: fnExecute
++In:  FL_ASLIFT=1 RX=Real:"0" PGM="LT"
++Out: EC=0 RZ=ShoI:"102030405060708#16" RY=Real:"2" RX=Cplx:"3 i 4"
+diff --git a/src/testSuite/tests/testSuiteList.txt b/src/testSuite/tests/testSuiteList.txt
+index 9954e3e..e19df22 100644
+--- a/src/testSuite/tests/testSuiteList.txt
++++ b/src/testSuite/tests/testSuiteList.txt
+@@ -490,6 +490,7 @@ tvm_cov
+ ; clear - clcvar_cov clears the loaded sample programs' local variables,
+ ; matrix2_cov leaves the indexed-matrix pointer set, serialize_state_cov saves
+ ; the loaded programs and reloads the whole state from file, pgm_solve_cov
++pgm_literal_endian
+ ; appends a program to memory, mvarmenu_cov appends one and leaves a formula in
+ ; the pool, histo_cov builds a HISTO matrix from the statistical accumulator,
+ ; clearvars_cov deletes named variables, and program_flow_cov appends programs

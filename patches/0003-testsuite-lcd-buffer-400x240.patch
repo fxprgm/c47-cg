@@ -1,0 +1,81 @@
+diff --git a/src/testSuite/hal/lcd.c b/src/testSuite/hal/lcd.c
+index 79c56e4..18d2ddc 100644
+--- a/src/testSuite/hal/lcd.c
++++ b/src/testSuite/hal/lcd.c
+@@ -13,9 +13,14 @@
+ // simulator so screen.c and fnScreenDump address it identically. A few guard
+ // bytes are added so a 24-bit blit at the last column cannot run off the end.
+ 
++// c47-cg: the buffer is DMCP's 400x240 whatever C47's SCREEN_WIDTH/HEIGHT (396x224 on the
++// CG50): C47 addresses it with a fixed 52-byte stride and bit 415-x.
++#define TS_LCD_W 400
++#define TS_LCD_H 240
++
+ static void ensureLcdBuffer(void) {
+   if(lcd_buffer == NULL) {
+-    lcd_buffer = (uint8_t *)calloc(SCREEN_HEIGHT * (SCREEN_WIDTH / 8 + 2) + 16, 1) + 2;
++    lcd_buffer = (uint8_t *)calloc(TS_LCD_H * (TS_LCD_W / 8 + 2) + 16, 1) + 2;
+   }
+ }
+ 
+@@ -24,10 +29,10 @@ void bitblt24(uint32_t x, uint32_t dx, uint32_t y, uint32_t val, int blt_op, int
+   if(dx < 1 || dx > 24) {
+     return;
+   }
+-  if(x >= SCREEN_WIDTH || x + dx > SCREEN_WIDTH) {
++  if(x >= TS_LCD_W || x + dx > TS_LCD_W) {
+     return;
+   }
+-  x = SCREEN_WIDTH - dx - x;
++  x = TS_LCD_W - dx - x;
+ 
+   const uint32_t byte_i  = x >> 3;
+   const uint32_t bit_off = x & 7u;
+@@ -60,7 +65,7 @@ void bitblt24(uint32_t x, uint32_t dx, uint32_t y, uint32_t val, int blt_op, int
+ 
+ void lcd_fill_rect(uint32_t x, uint32_t y, uint32_t dx, uint32_t dy, int val) {
+   uint32_t line, col, cols, endX = x + dx, endY = y + dy;
+-  if(endX > SCREEN_WIDTH || endY > SCREEN_HEIGHT) {
++  if(endX > TS_LCD_W || endY > TS_LCD_H) {
+     return;
+   }
+   int blt_op = val ? BLT_OR : BLT_ANDN;
+@@ -74,11 +79,11 @@ void lcd_fill_rect(uint32_t x, uint32_t y, uint32_t dx, uint32_t dy, int val) {
+ 
+ bool_t lcd_buffer_pixel_on(uint32_t x, uint32_t y) {
+   ensureLcdBuffer();
+-  if(x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT) {
++  if(x >= TS_LCD_W || y >= TS_LCD_H) {
+     return false;
+   }
+   const uint8_t *line_buf = lcd_buffer + 52 * y;
+-  const uint32_t bitIndex = SCREEN_WIDTH - 1 - x;
++  const uint32_t bitIndex = TS_LCD_W - 1 - x;
+   const uint32_t byte_i = bitIndex >> 3;
+   const uint32_t bit_j = bitIndex & 7u;
+   return !((line_buf[2 + byte_i] >> bit_j) & 1u);
+@@ -86,9 +91,9 @@ bool_t lcd_buffer_pixel_on(uint32_t x, uint32_t y) {
+ 
+ uint8_t *lcd_line_addr(int row) {
+   ensureLcdBuffer();
+-  if(row < 0 || row >= SCREEN_HEIGHT) {    // the same refusal as the c47-gtk twin, so an out of range row cannot differ between the two builds
++  if(row < 0 || row >= TS_LCD_H) {    // the same refusal as the c47-gtk twin, so an out of range row cannot differ between the two builds
+     char tmp[1000];
+-    sprintf(tmp, "row = %" PRIi32 ", it should be >= 0 and < %" PRIi32 "!\n", (int32_t)row, (int32_t)SCREEN_HEIGHT);
++    sprintf(tmp, "row = %" PRIi32 ", it should be >= 0 and < %" PRIi32 "!\n", (int32_t)row, (int32_t)TS_LCD_H);
+     abortf(tmp);
+   }
+   lcd_buffer[52 * row] = 1u;               // marks the line dirty, as DMCP does
+diff --git a/src/testSuite/testSuite.c b/src/testSuite/testSuite.c
+index 1dfcc9f..1f9c73e 100644
+--- a/src/testSuite/testSuite.c
++++ b/src/testSuite/testSuite.c
+@@ -3481,7 +3481,7 @@ static bool_t covMatrixEditorScreenUnchangedPastLastRow(void) {
+   const uint32_t realsPerElement = (getRegisterDataType(matrixIndex) == dtReal34Matrix) ? 1 : 2;
+   const uint32_t reals = openMatrixMIMPointer.header.matrixRows * openMatrixMIMPointer.header.matrixColumns * realsPerElement;
+   const uint32_t pastEnd = (MATRIX_MAX_ROWS - MATRIX_MAX_ROWS_ON_STACK) * openMatrixMIMPointer.header.matrixColumns * realsPerElement;
+-  const size_t frameSize = SCREEN_HEIGHT * (SCREEN_WIDTH / 8 + 2);
++  const size_t frameSize = 240 * 52;    // c47-cg: lcd_buffer stays DMCP's 400x240 (was SCREEN_HEIGHT * (SCREEN_WIDTH / 8 + 2))
+   real34_t *elements = openMatrixMIMPointer.realMatrix.matrixElements;
+   real34_t *copy = allocC47Blocks((reals + pastEnd) * REAL34_SIZE_IN_BLOCKS);
+   uint8_t *frame = malloc(frameSize);

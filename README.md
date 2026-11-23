@@ -28,6 +28,23 @@ next.
 
 Keys: [docs/KEYS.md](docs/KEYS.md).
 
+## Testing
+
+- **Upstream's own test suite on a big-endian CPU:** `python3 tools/test_bigendian.py --arch ppc`
+  builds upstream's `src/testSuite` (91,019 tests) natively and for 32-bit big-endian PowerPC,
+  runs it under qemu-user, and compares the two (setup at the top of the script).
+  `patches/0002-big-endian-byte-order.patch` holds what it found: program literals, the
+  state file's program words and `testPgms.bin` kept in the little-endian byte order C47's
+  files have, so files move between the CG50 and other C47 calculators; SEED gives the same
+  random sequence on any CPU. With it, big-endian and little-endian fail exactly the same
+  tests.
+- **Those that fail on both, by design:** 1,871 tests expect the R47's 400-pixel width. With
+  396 pixels a few numbers no longer fit and are shown in scientific notation (1,856 tests in
+  `drm_longint_cov.txt`, e.g. a 21-digit negative integer), and screenshot hashes change
+  (15 in `graphs_cov.txt` and `nested_cov.txt`). Without the layout patch all 91,019 pass.
+- **The add-in's own code** (`src/`) runs in the PC test build with key scripts
+  (`tests/*.txt`; `tests/run_layout.py` runs the layout ones).
+
 ## Building
 
 Needs, on the build machine: Python 3, meson, ninja, a C compiler, freetype2, gmp, gtk+-3.0
