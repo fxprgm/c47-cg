@@ -30,7 +30,7 @@ The CG50's own:
 | MENU | saves C47's state and goes to the main menu; C47 is as you left it when you come back |
 | SHIFT + AC/ON | saves C47's state and switches the calculator off |
 
-◀ and ▶ do nothing yet.
+◀ and ▶ do nothing yet. This is a first mapping, to be tried on the calculator and changed.
 
 ## Saving and loading files
 
@@ -40,5 +40,3 @@ storage memory, folder `\C47` (`STATE`, `PROGRAMS`, `DATA`; the automatic save i
 file's name is typed with the keys' R47 alpha letters (the `X,θ,T` row is A-F, `a b/c` to
 `)` G-J, ...), f then a digit key for a digit, DEL to delete. ▲ ▼ move, EXE chooses,
 EXIT cancels.
-
-This is a first mapping, to be tried on the calculator and changed.
