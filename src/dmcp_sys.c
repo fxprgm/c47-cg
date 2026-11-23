@@ -12,6 +12,7 @@
  */
 #include "c47.h"
 #include "plat.h"
+#include "view.h"
 
 sys_sdb_t c47cg_sdb;
 
@@ -19,6 +20,7 @@ sys_sdb_t c47cg_sdb;
 static int keyBuffer[KEY_BUFFER_SIZE];
 static int keyCount = 0;
 static int lastKey = -1;
+static int osRequest = 0;                // PLAT_KEY_MENU / PLAT_KEY_POWEROFF, done at the next sys_sleep
 static bool_t keyDown = false;
 
 #define AUTO_OFF_MS (10u * 60u * 1000u)
@@ -58,7 +60,12 @@ static void pushKey(int k) {
 static void pollKeys(void) {
   int k;
   while((k = plat_next_key()) >= 0) {
-    pushKey(k);
+    if(k == PLAT_KEY_MENU || k == PLAT_KEY_POWEROFF) {
+      osRequest = k;
+    }
+    else {
+      pushKey(k);
+    }
   }
 }
 
@@ -194,21 +201,37 @@ static bool_t minuteChanged(void) {
 }
 
 
+// Leave for the OS (main menu or power off) from the run loop, where C47's state is
+// consistent: save it first, since from the main menu the user may start another add-in and
+// this one would start afresh.
+static void doOsRequest(void) {
+  int request = osRequest;
+  osRequest = 0;
+  fnSaveAuto(0);
+  if(request == PLAT_KEY_MENU) {
+    plat_os_menu();
+  }
+  else {
+    plat_power_off();
+  }
+  key_pop_all();
+  lastMinute = -1;
+  autoOffStart = plat_ms();
+  lcd_forced_refresh();
+  view_all_changed();
+  plat_flush();
+}
+
+
 void sys_sleep(void) {
   plat_flush();
 
   if(ST(STAT_OFF)) {
-    // Off: only the ON key (EXIT) switches back on. The key itself is not passed on.
-    for(;;) {
-      int k = plat_next_key();
-      if(k == KEY_EXIT) {
-        while(plat_next_key() != 0) {
-          plat_wait(10);
-        }
-        break;
-      }
-      plat_wait(1000);
-    }
+    // C47 switched off (OFF, or auto-off): switch the calculator off. It comes back on here.
+    fnSaveAuto(0);
+    plat_power_off();
+    key_pop_all();
+    view_all_changed();
     CLR_ST(STAT_PGM_END);
     autoOffStart = plat_ms();
     lastMinute = -1;
@@ -217,6 +240,9 @@ void sys_sleep(void) {
 
   for(;;) {
     pollKeys();
+    if(osRequest) {
+      doOsRequest();
+    }
     if(keyCount) {
       return;
     }

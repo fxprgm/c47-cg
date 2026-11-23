@@ -1,0 +1,8 @@
+# put numbers on the stack, factor-ish big integer work, then MENU (saves state)
+wait 2000
+key EXIT
+key 1 2 3 ENTER 4 5 6 MUL
+wait 300
+shot out/save1.ppm
+menu
+wait 500

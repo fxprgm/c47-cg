@@ -1,0 +1,3 @@
+# a fresh start: the stack must come back from the saved state
+wait 2000
+shot out/save2.ppm

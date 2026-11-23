@@ -10,6 +10,8 @@
  *                   from tools/keys.txt-like names below, e.g. 7, ENTER, F1, SHIFT_F)
  *     wait MS       let MS milliseconds pass
  *     shot FILE     write the screen to FILE (.ppm)
+ *     menu          press MENU (C47 saves its state, "goes to the main menu" and comes back)
+ *     off           press SHIFT+AC/ON (the same, "switching off")
  *     quit          stop (also at the end of the script)
  * FILES_DIR (default ./host_files) stands in for the calculator's storage memory.
  */
@@ -19,6 +21,8 @@
 #include <ctype.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "plat.h"
 #include "view.h"
 
@@ -115,6 +119,10 @@ static void stepScript(void) {
     else if(strcmp(cmd, "shot") == 0) {
       writeShot(strtok(NULL, " \t\r\n"));
     }
+    else if(strcmp(cmd, "menu") == 0 || strcmp(cmd, "off") == 0) {
+      enqueue(cmd[0] == 'm' ? PLAT_KEY_MENU : PLAT_KEY_POWEROFF, now);
+      scriptResume = now + 200;
+    }
     else if(strcmp(cmd, "quit") == 0) {
       exit(0);
     }
@@ -135,7 +143,18 @@ uint16_t *plat_framebuffer(void) {
 }
 
 
-void plat_present(void) {
+void plat_present(int y, int height) {
+  (void)y; (void)height;
+}
+
+
+void plat_os_menu(void) {
+  fprintf(stderr, "[%6u ms] main menu (and back)\n", now);
+}
+
+
+void plat_power_off(void) {
+  fprintf(stderr, "[%6u ms] power off (and on)\n", now);
 }
 
 
@@ -187,6 +206,21 @@ void plat_rtc_write(const plat_time_t *t) {
 
 const char *plat_files_root(void) {
   return filesRoot;
+}
+
+
+int plat_fs_open(const char *path, int flags) { return open(path, flags, 0644); }
+int plat_fs_read(int fd, void *buf, int n) { return (int)read(fd, buf, (size_t)n); }
+int plat_fs_write(int fd, const void *buf, int n) { return (int)write(fd, buf, (size_t)n); }
+int plat_fs_seek(int fd, int offset, int whence) { return (int)lseek(fd, offset, whence); }
+int plat_fs_close(int fd) { return close(fd); }
+int plat_fs_unlink(const char *path) { return unlink(path); }
+int plat_fs_rename(const char *from, const char *to) { return rename(from, to); }
+int plat_fs_mkdir(const char *path) { return mkdir(path, 0755); }
+
+int plat_fs_size(const char *path) {
+  struct stat st;
+  return stat(path, &st) == 0 ? (int)st.st_size : -1;
 }
 
 

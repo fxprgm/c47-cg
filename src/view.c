@@ -63,6 +63,7 @@ void plat_flush(void) {
   }
   uint16_t *fb = plat_framebuffer();
   const uint16_t paper = view_paper, ink = view_ink;
+  int top = VIEW_H, bottom = -1;
   for(int r = 0; r < SRC_H; r++) {
     if(!changed[r]) {
       continue;
@@ -70,6 +71,12 @@ void plat_flush(void) {
     changed[r] = 0;
     if(dstRow[r] < 0) {
       continue;
+    }
+    if(dstRow[r] < top) {
+      top = dstRow[r];
+    }
+    if(dstRow[r] > bottom) {
+      bottom = dstRow[r];
     }
     const uint8_t *line = dmcp_shown_line(r);
     uint16_t *out = fb + dstRow[r] * VIEW_W;
@@ -80,5 +87,7 @@ void plat_flush(void) {
     }
   }
   anyChanged = 0;
-  plat_present();
+  if(bottom >= top) {
+    plat_present(top, bottom - top + 1);
+  }
 }

@@ -4,6 +4,8 @@ same defines as the calculator build (DMCP_BUILD, NEW_HW, R47 model) except 64-b
 
     python tools/build_host.py          # -> build/c47cg_host
     python tools/build_host.py -c       # clean first
+    python tools/build_host.py --mini-gmp   # with src/gmp (mini-gmp) as the calculator build,
+                                            # instead of the system's GMP -> build/c47cg_host_mini
 
 Needs tools/sync_upstream.py to have run, gcc and libgmp-dev.
 """
@@ -49,6 +51,14 @@ def compile_one(src):
     return obj, (r.stderr if r.returncode else None)
 
 
+MINI = "--mini-gmp" in sys.argv
+if MINI:
+    OBJ += "_mini"
+    OUT += "_mini"
+    CFLAGS.insert(0, "-I" + os.path.join(ROOT, "src", "gmp"))
+    OURS += ["src/gmp/mini-gmp.c", "src/gmp/mini-gmp-extra.c"]
+
+
 def main():
     if "-c" in sys.argv:
         subprocess.run(["rm", "-rf", OBJ])
@@ -65,7 +75,8 @@ def main():
         print(f"--- {os.path.relpath(src, ROOT)}\n{err}")
     if errors:
         sys.exit(f"{len(errors)} file(s) failed")
-    r = subprocess.run(["gcc", "-o", OUT] + objs + ["-lgmp", "-lm"], capture_output=True, text=True)
+    libs = ["-lm"] if MINI else ["-lgmp", "-lm"]
+    r = subprocess.run(["gcc", "-o", OUT] + objs + libs, capture_output=True, text=True)
     if r.returncode:
         print(r.stderr)
         sys.exit("link failed")

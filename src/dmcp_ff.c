@@ -4,6 +4,8 @@
  * f_eof macros) and DMCP's file helpers, over POSIX open/read/write, which gint provides on the
  * calculator's storage memory and the C library on a PC.
  *
+ * The calls go through plat_fs_* (plat.h): on the calculator each one is a trip into the OS.
+ *
  * Paths: C47 writes "SAVFILES\C47auto.sav" or "/SCREENS/..."; they are made relative to
  * plat_files_root() ("/C47" on the calculator), with '/' separators.
  *
@@ -17,9 +19,6 @@
 #include "plat.h"
 
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
 
 #define BUF_SIZE ((UINT)sizeof(((FIL *)0)->buf))
 
@@ -44,8 +43,8 @@ static int fdOf(FIL *fp) {
 
 static FRESULT flushWrite(FIL *fp) {
   if(fp->err && fp->clust) {
-    ssize_t n = write(fdOf(fp), fp->buf, fp->clust);
-    if(n != (ssize_t)fp->clust) {
+    int n = plat_fs_write(fdOf(fp), fp->buf, (int)fp->clust);
+    if(n != (int)fp->clust) {
       return FR_DISK_ERR;
     }
   }
@@ -72,11 +71,11 @@ FRESULT f_open(FIL *fp, const TCHAR *path, BYTE mode) {
     flags |= O_CREAT;
   }
 
-  int fd = open(name, flags, 0644);
+  int fd = plat_fs_open(name, flags);
   if(fd < 0) {
-    return errno == EEXIST ? FR_EXIST : FR_NO_FILE;
+    return (flags & O_EXCL) && plat_fs_size(name) >= 0 ? FR_EXIST : FR_NO_FILE;
   }
-  off_t size = lseek(fd, 0, SEEK_END);
+  int size = plat_fs_seek(fd, 0, SEEK_END);
   if(size < 0) {
     size = 0;
   }
@@ -85,7 +84,7 @@ FRESULT f_open(FIL *fp, const TCHAR *path, BYTE mode) {
     fp->fptr = (FSIZE_t)size;
   }
   else {
-    lseek(fd, 0, SEEK_SET);
+    plat_fs_seek(fd, 0, SEEK_SET);
     fp->fptr = 0;
   }
   fp->sect = fp->fptr;
@@ -100,7 +99,7 @@ FRESULT f_close(FIL *fp) {
     return FR_INVALID_OBJECT;
   }
   FRESULT r = flushWrite(fp);
-  close(fdOf(fp));
+  plat_fs_close(fdOf(fp));
   fp->obj.lockid = 0;
   return r;
 }
@@ -123,10 +122,10 @@ FRESULT f_read(FIL *fp, void *buff, UINT btr, UINT *br) {
   while(done < btr) {
     // buffer holds file bytes [sect, sect + clust)
     if(fp->fptr < fp->sect || fp->fptr >= fp->sect + fp->clust) {
-      if(lseek(fdOf(fp), (off_t)fp->fptr, SEEK_SET) < 0) {
+      if(plat_fs_seek(fdOf(fp), (int)fp->fptr, SEEK_SET) < 0) {
         return FR_DISK_ERR;
       }
-      ssize_t n = read(fdOf(fp), fp->buf, BUF_SIZE);
+      int n = plat_fs_read(fdOf(fp), fp->buf, (int)BUF_SIZE);
       if(n < 0) {
         return FR_DISK_ERR;
       }
@@ -161,7 +160,7 @@ FRESULT f_write(FIL *fp, const void *buff, UINT btw, UINT *bw) {
     return FR_INVALID_OBJECT;
   }
   if(!fp->err) {                          // the buffer starts empty at the current position
-    if(lseek(fdOf(fp), (off_t)fp->fptr, SEEK_SET) < 0) {
+    if(plat_fs_seek(fdOf(fp), (int)fp->fptr, SEEK_SET) < 0) {
       return FR_DISK_ERR;
     }
     fp->sect = fp->fptr;
@@ -210,7 +209,7 @@ FRESULT f_lseek(FIL *fp, FSIZE_t ofs) {
 FRESULT f_unlink(const TCHAR *path) {
   char name[128];
   hostPath(name, sizeof(name), path);
-  return unlink(name) == 0 ? FR_OK : FR_NO_FILE;
+  return plat_fs_unlink(name) == 0 ? FR_OK : FR_NO_FILE;
 }
 
 
@@ -218,7 +217,7 @@ FRESULT f_rename(const TCHAR *path_old, const TCHAR *path_new) {
   char a[128], b[128];
   hostPath(a, sizeof(a), path_old);
   hostPath(b, sizeof(b), path_new);
-  return rename(a, b) == 0 ? FR_OK : FR_NO_FILE;
+  return plat_fs_rename(a, b) == 0 ? FR_OK : FR_NO_FILE;
 }
 
 
@@ -229,28 +228,26 @@ int check_create_dir(const char *dir) {
   for(char *p = name + strlen(plat_files_root()) + 1; *p; p++) {
     if(*p == '/') {
       *p = 0;
-      mkdir(name, 0755);
+      plat_fs_mkdir(name);
       *p = '/';
     }
   }
-  mkdir(name, 0755);
+  plat_fs_mkdir(name);
   return 0;
 }
 
 
 int file_exists(const char *fn) {
   char name[128];
-  struct stat st;
   hostPath(name, sizeof(name), fn);
-  return stat(name, &st) == 0;
+  return plat_fs_size(name) >= 0;
 }
 
 
 int file_size(const char *fn) {
   char name[128];
-  struct stat st;
   hostPath(name, sizeof(name), fn);
-  return stat(name, &st) == 0 ? (int)st.st_size : -1;
+  return plat_fs_size(name);
 }
 
 
