@@ -24,6 +24,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <unistd.h>
 #include "plat.h"
 #include "view.h"
@@ -282,6 +283,23 @@ int plat_fs_mkdir(const char *path) { return mkdir(path, 0755); }
 int plat_fs_size(const char *path) {
   struct stat st;
   return stat(path, &st) == 0 ? (int)st.st_size : -1;
+}
+
+
+int plat_fs_list(const char *path, char (*names)[PLAT_NAME_MAX], int max) {
+  DIR *d = opendir(path);
+  if(!d) {
+    return -1;
+  }
+  int n = 0;
+  struct dirent *e;
+  while(n < max && (e = readdir(d))) {
+    if(e->d_type == DT_REG) {
+      snprintf(names[n++], PLAT_NAME_MAX, "%s", e->d_name);
+    }
+  }
+  closedir(d);
+  return n;
 }
 
 

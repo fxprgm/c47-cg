@@ -21,6 +21,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <string.h>
 #include <stdio.h>
 #include "plat.h"
 #include "view.h"
@@ -231,6 +233,28 @@ static int os_mkdir(const char *path) { return mkdir(path, 0755); }
 static int os_size(const char *path) {
   struct stat st;
   return stat(path, &st) == 0 ? (int)st.st_size : -1;
+}
+
+static int os_list(const char *path, char (*names)[PLAT_NAME_MAX], int max) {
+  DIR *d = opendir(path);
+  if(!d) {
+    return -1;
+  }
+  int n = 0;
+  struct dirent *e;
+  while(n < max && (e = readdir(d))) {
+    if(e->d_type == DT_REG) {
+      strncpy(names[n], e->d_name, PLAT_NAME_MAX - 1);
+      names[n][PLAT_NAME_MAX - 1] = 0;
+      n++;
+    }
+  }
+  closedir(d);
+  return n;
+}
+
+int plat_fs_list(const char *path, char (*names)[PLAT_NAME_MAX], int max) {
+  return gint_world_switch(GINT_CALL(os_list, path, (void *)names, max));
 }
 
 int plat_fs_open(const char *path, int flags) { return gint_world_switch(GINT_CALL(os_open, path, flags)); }

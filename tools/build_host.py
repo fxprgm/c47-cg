@@ -20,7 +20,7 @@ UP = os.path.join(ROOT, "upstream")
 OBJ = os.path.join(ROOT, "build", "host_obj")
 OUT = os.path.join(ROOT, "build", "c47cg_host")
 
-OURS = ["src/dmcp_lcd.c", "src/dmcp_sys.c", "src/dmcp_ff.c", "src/view.c", "src/plat_host.c"]
+OURS = ["src/dmcp_lcd.c", "src/dmcp_sys.c", "src/dmcp_ff.c", "src/dmcp_ui.c", "src/view.c", "src/plat_host.c"]
 
 CFLAGS = [
     "-O1", "-g", "-fsigned-char", "-fno-strict-aliasing", "-w",

@@ -59,4 +59,9 @@ int plat_fs_rename(const char *from, const char *to);
 int plat_fs_mkdir(const char *path);
 int plat_fs_size(const char *path);
 
+// The names of the files (not folders) in folder `path`, at most `max`, each cut to
+// PLAT_NAME_MAX - 1 characters; the number found, or -1 if the folder can't be read.
+#define PLAT_NAME_MAX 32
+int plat_fs_list(const char *path, char (*names)[PLAT_NAME_MAX], int max);
+
 #endif

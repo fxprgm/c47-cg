@@ -32,4 +32,13 @@ The CG50's own:
 
 ◀ and ▶ do nothing yet.
 
+## Saving and loading files
+
+C47's I/O menu (g, then 0) saves and loads states, programs and data. The files are in the
+storage memory, folder `\C47` (`STATE`, `PROGRAMS`, `DATA`; the automatic save is
+`SAVFILES\R47auto.sav`). Saving shows the folder's files and a new file at the top; a new
+file's name is typed with the keys' R47 alpha letters (the `X,θ,T` row is A-F, `a b/c` to
+`)` G-J, ...), f then a digit key for a digit, DEL to delete. ▲ ▼ move, EXE chooses,
+EXIT cancels.
+
 This is a first mapping, to be tried on the calculator and changed.

@@ -17,13 +17,14 @@
  */
 #include "c47.h"
 #include "plat.h"
+#include "dmcp_cg.h"
 
 #include <fcntl.h>
 
 #define BUF_SIZE ((UINT)sizeof(((FIL *)0)->buf))
 
 
-static void hostPath(char *out, size_t size, const char *path) {
+void dmcp_host_path(char *out, size_t size, const char *path) {
   while(*path == '/' || *path == '\\') {
     path++;
   }
@@ -58,7 +59,7 @@ static FRESULT flushWrite(FIL *fp) {
 FRESULT f_open(FIL *fp, const TCHAR *path, BYTE mode) {
   char name[128];
   memset(fp, 0, sizeof(*fp));
-  hostPath(name, sizeof(name), path);
+  dmcp_host_path(name, sizeof(name), path);
 
   int flags = (mode & FA_WRITE) ? ((mode & FA_READ) ? O_RDWR : O_WRONLY) : O_RDONLY;
   if(mode & FA_CREATE_ALWAYS) {
@@ -208,22 +209,22 @@ FRESULT f_lseek(FIL *fp, FSIZE_t ofs) {
 
 FRESULT f_unlink(const TCHAR *path) {
   char name[128];
-  hostPath(name, sizeof(name), path);
+  dmcp_host_path(name, sizeof(name), path);
   return plat_fs_unlink(name) == 0 ? FR_OK : FR_NO_FILE;
 }
 
 
 FRESULT f_rename(const TCHAR *path_old, const TCHAR *path_new) {
   char a[128], b[128];
-  hostPath(a, sizeof(a), path_old);
-  hostPath(b, sizeof(b), path_new);
+  dmcp_host_path(a, sizeof(a), path_old);
+  dmcp_host_path(b, sizeof(b), path_new);
   return plat_fs_rename(a, b) == 0 ? FR_OK : FR_NO_FILE;
 }
 
 
 int check_create_dir(const char *dir) {
   char name[128];
-  hostPath(name, sizeof(name), dir);
+  dmcp_host_path(name, sizeof(name), dir);
   // DMCP makes the whole path; so do we, one level at a time.
   for(char *p = name + strlen(plat_files_root()) + 1; *p; p++) {
     if(*p == '/') {
@@ -239,14 +240,14 @@ int check_create_dir(const char *dir) {
 
 int file_exists(const char *fn) {
   char name[128];
-  hostPath(name, sizeof(name), fn);
+  dmcp_host_path(name, sizeof(name), fn);
   return plat_fs_size(name) >= 0;
 }
 
 
 int file_size(const char *fn) {
   char name[128];
-  hostPath(name, sizeof(name), fn);
+  dmcp_host_path(name, sizeof(name), fn);
   return plat_fs_size(name);
 }
 
@@ -264,36 +265,4 @@ int sys_disk_write_enable(int val) {
 
 int sys_is_disk_write_enable(void) {
   return 1;
-}
-
-
-void disp_disk_info(const char *hdr) {
-  (void)hdr;
-}
-
-
-// DMCP's file browser (save/load under a chosen name). Not written yet: every manual
-// save/load/export is cancelled. The automatic state save does not use it.
-int file_selection_screen(const char *title, const char *base_dir, const char *ext, file_sel_fn_t sel_fn,
-                          int disp_new, int overwrite_check, void *data) {
-  (void)title; (void)base_dir; (void)ext; (void)sel_fn; (void)disp_new; (void)overwrite_check; (void)data;
-  return MRET_EXIT;
-}
-
-
-// ---- DMCP's text output for its own dialogs (io.c's "Saving state ..." and the like).
-// Not drawn yet; the dialogs are short-lived. ----
-
-void lcd_writeText(disp_stat_t *ds, const char *text) {
-  (void)ds; (void)text;
-}
-
-
-void lcd_setLine(disp_stat_t *ds, int ln_nr) {
-  (void)ds; (void)ln_nr;
-}
-
-
-void lcd_print(disp_stat_t *ds, const char *fmt, ...) {
-  (void)ds; (void)fmt;
 }

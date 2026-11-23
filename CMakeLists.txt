@@ -30,6 +30,7 @@ set(SOURCES
   src/dmcp_lcd.c
   src/dmcp_sys.c
   src/dmcp_ff.c
+  src/dmcp_ui.c
   src/view.c
   src/plat_gint.c
   src/gmp/mini-gmp.c

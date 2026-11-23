@@ -1,0 +1,29 @@
+# manual state save and load through DMCP's file browser (src/dmcp_ui.c)
+wait 2000
+key EXIT
+key 7 ENTER
+key SHIFT_G 0
+wait 300
+key F2
+wait 300
+shot out/io_1_browser.ppm
+key ENTER
+wait 300
+key X2 SQRT SHIFT_F 1
+wait 300
+shot out/io_2_name.ppm
+key ENTER
+wait 1500
+shot out/io_3_saved.ppm
+key 5 ENTER
+wait 300
+key SHIFT_G 0
+key SHIFT_F F2
+wait 300
+shot out/io_4_loadlist.ppm
+key ENTER
+wait 300
+shot out/io_5_confirm.ppm
+key ENTER
+wait 1500
+shot out/io_6_loaded.ppm

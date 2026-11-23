@@ -3,8 +3,9 @@
 A port of the [C47](https://gitlab.com/rpncalculators/c43) RPN calculator firmware, in its R47
 form, to the Casio fx-CG50 as a gint add-in.
 
-Status: in development. It runs in a PC test build of the add-in code; the calculator build is
-next.
+Status: in development. It runs on the CG50's own OS in an emulator (not yet tried on a real
+calculator): the R47's functions, menus, saving state across MENU and restarts, and manual
+save/load through DMCP's file browser (rebuilt in `src/dmcp_ui.c`).
 
 ## How it works
 
