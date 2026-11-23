@@ -1,0 +1,33 @@
+# The stack: four filled registers with long and complex numbers, a few softmenus.
+wait 3000
+shot boot.ppm
+shotfull boot_full.ppm
+key 1 ENTER 7 DIV
+key SHIFT_F RDN
+key 3 ENTER 4 SHIFT_F ENTER
+key 2 SQRT
+wait 500
+shot stack4.ppm
+shotfull stack4_full.ppm
+key SHIFT_F CHS
+wait 500
+shot menu_disp.ppm
+shotfull menu_disp_full.ppm
+key EXIT SHIFT_F DIV
+wait 500
+shot menu_stat.ppm
+shotfull menu_stat_full.ppm
+key EXIT SHIFT_G ENTER
+wait 500
+shot menu_cpx.ppm
+shotfull menu_cpx_full.ppm
+key EXIT SHIFT_F CHS
+wait 300
+key SHIFT_F
+wait 300
+shot menu_disp_fshift.ppm
+shotfull menu_disp_fshift_full.ppm
+key SHIFT_G
+wait 300
+shot menu_disp_gshift.ppm
+shotfull menu_disp_gshift_full.ppm

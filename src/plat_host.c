@@ -9,7 +9,9 @@
  *     key K...      press and release each key, 80 ms apart (K = DMCP code 1..43 or a name
  *                   from tools/keys.txt-like names below, e.g. 7, ENTER, F1, SHIFT_F)
  *     wait MS       let MS milliseconds pass
- *     shot FILE     write the screen to FILE (.ppm)
+ *     shot FILE     write the screen to FILE (.ppm); warns if C47 drew outside the 396x224 shown
+ *     shotfull FILE write C47's whole 400x240 buffer to FILE (.ppm), what the CG50 doesn't show
+ *                   (columns 396..399, rows 224..239) on a pink paper
  *     menu          press MENU (C47 saves its state, "goes to the main menu" and comes back)
  *     off           press SHIFT+AC/ON (the same, "switching off")
  *     quit          stop (also at the end of the script)
@@ -26,6 +28,8 @@
 #include "plat.h"
 #include "view.h"
 
+#define SRC_ROWS 240                   // C47's lcd buffer (DMCP's 400x240)
+
 static uint16_t frame[VIEW_W * VIEW_H];
 static uint32_t now = 0;               // simulated ms
 static FILE *script;
@@ -38,11 +42,15 @@ static int qHead = 0, qTail = 0;
 static uint32_t scriptResume = 0;      // the script continues at this time
 static uint32_t idleSince = 0;
 
+// The DMCP key codes are those of the DM42's keyboard; C47's R47 build moves six of them to
+// the R47's keys (convertKeyCode in upstream src/c47/c47.c): XEQ 11, EEX 15, CHS 16, UP 18,
+// DOWN 23, f 28 (the DM42's COS, CHS, E, UP, DOWN, SHIFT positions).
 static const struct { const char *name; int code; } names[] = {
-  {"ENTER", 13}, {"SWAP", 14}, {"CHS", 15}, {"EEX", 16}, {"BSP", 17},
-  {"XEQ", 18}, {"DIV", 22}, {"UP", 23}, {"MUL", 27}, {"DOWN", 28}, {"SUB", 32},
+  {"ENTER", 13}, {"SWAP", 14}, {"CHS", 16}, {"EEX", 15}, {"BSP", 17},
+  {"XEQ", 11}, {"DIV", 22}, {"UP", 18}, {"MUL", 27}, {"DOWN", 23}, {"SUB", 32},
   {"EXIT", 33}, {"DOT", 35}, {"RS", 36}, {"ADD", 37},
-  {"STO", 7}, {"RCL", 8}, {"RDN", 9}, {"DRG", 10}, {"SHIFT_F", 11}, {"SHIFT_G", 12},
+  {"X2", 1}, {"SQRT", 2}, {"INV", 3}, {"YX", 4}, {"LOG", 5}, {"LN", 6},
+  {"STO", 7}, {"RCL", 8}, {"RDN", 9}, {"DRG", 10}, {"SHIFT_F", 28}, {"SHIFT_G", 12},
   {"F1", 38}, {"F2", 39}, {"F3", 40}, {"F4", 41}, {"F5", 42}, {"F6", 43},
   {"0", 34}, {"1", 29}, {"2", 30}, {"3", 31}, {"4", 24}, {"5", 25}, {"6", 26},
   {"7", 19}, {"8", 20}, {"9", 21},
@@ -85,6 +93,56 @@ static void writeShot(const char *path) {
   }
   fclose(f);
   fprintf(stderr, "[%6u ms] shot %s\n", now, path);
+  // C47 is laid out for 396x224 (patches/0001-layout-396x224.patch); its buffer keeps 400x240.
+  int first = -1, last = -1, right = 0;
+  for(int r = 0; r < SRC_ROWS; r++) {
+    const uint8_t *line = dmcp_shown_line(r);
+    int ink = 0;
+    for(int x = r < VIEW_H ? VIEW_W : 0; x < 400; x++) {
+      int b = 399 - x;
+      if(!(line[b >> 3] >> (b & 7) & 1)) {
+        ink = 1;
+        right |= r < VIEW_H;
+        break;
+      }
+    }
+    if(ink) {
+      if(first < 0) {
+        first = r;
+      }
+      last = r;
+    }
+  }
+  if(first >= 0) {
+    fprintf(stderr, "[%6u ms] WARNING %s: ink outside the view, rows %d..%d%s\n", now, path, first, last,
+            right ? " (some in columns 396..399)" : "");
+  }
+}
+
+
+static void writeFullShot(const char *path) {
+  plat_flush();
+  FILE *f = fopen(path, "wb");
+  if(!f) {
+    perror(path);
+    exit(2);
+  }
+  fprintf(f, "P6\n400 %d\n255\n", SRC_ROWS);
+  for(int r = 0; r < SRC_ROWS; r++) {
+    const uint8_t *line = dmcp_shown_line(r);
+    for(int x = 0; x < 400; x++) {
+      int b = 399 - x;
+      int white = line[b >> 3] >> (b & 7) & 1;
+      unsigned char rgb[3] = {0x10, 0x10, 0x10};
+      if(white) {
+        int shown = r < VIEW_H && x < VIEW_W;
+        rgb[0] = 0xE0; rgb[1] = shown ? 0xE4 : 0xB0; rgb[2] = shown ? 0xD8 : 0xC0;
+      }
+      fwrite(rgb, 1, 3, f);
+    }
+  }
+  fclose(f);
+  fprintf(stderr, "[%6u ms] shotfull %s\n", now, path);
 }
 
 
@@ -122,6 +180,9 @@ static void stepScript(void) {
     else if(strcmp(cmd, "menu") == 0 || strcmp(cmd, "off") == 0) {
       enqueue(cmd[0] == 'm' ? PLAT_KEY_MENU : PLAT_KEY_POWEROFF, now);
       scriptResume = now + 200;
+    }
+    else if(strcmp(cmd, "shotfull") == 0) {
+      writeFullShot(strtok(NULL, " \t\r\n"));
     }
     else if(strcmp(cmd, "quit") == 0) {
       exit(0);

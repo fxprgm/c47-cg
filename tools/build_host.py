@@ -43,9 +43,24 @@ def sources():
     return [os.path.join(UP, p) for p in ups] + gen + [os.path.join(ROOT, p) for p in OURS]
 
 
+def newest_header():
+    """Any header changing (a patch to defines.h, say) rebuilds everything."""
+    newest = 0
+    for d in (os.path.join(ROOT, "src"), os.path.join(ROOT, "build", "generated_le"),
+              os.path.join(UP, "src", "c47"), os.path.join(UP, "dep", "decNumberICU")):
+        for dirpath, _, files in os.walk(d):
+            for f in files:
+                if f.endswith(".h"):
+                    newest = max(newest, os.path.getmtime(os.path.join(dirpath, f)))
+    return newest
+
+
+HEADERS = None
+
+
 def compile_one(src):
     obj = os.path.join(OBJ, os.path.relpath(src, ROOT).replace("/", "__") + ".o")
-    if os.path.exists(obj) and os.path.getmtime(obj) > os.path.getmtime(src) and not src.startswith(os.path.join(ROOT, "src")):
+    if os.path.exists(obj) and os.path.getmtime(obj) > max(os.path.getmtime(src), HEADERS):
         return obj, None
     r = subprocess.run(["gcc", "-c", src, "-o", obj] + CFLAGS, capture_output=True, text=True)
     return obj, (r.stderr if r.returncode else None)
@@ -63,6 +78,8 @@ def main():
     if "-c" in sys.argv:
         subprocess.run(["rm", "-rf", OBJ])
     os.makedirs(OBJ, exist_ok=True)
+    global HEADERS
+    HEADERS = newest_header()
     srcs = sources()
     errors = []
     objs = []

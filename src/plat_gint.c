@@ -2,7 +2,7 @@
 /*
  * The calculator side of plat.h, on gint.
  *
- * Keys: the CG50's keys are mapped to the R47's key positions (DMCP codes 1..43, numbered
+ * Keys: the CG50's keys are mapped to the R47's key positions (1..43, numbered
  * row by row; see docs/KEYS.md). MENU goes to the OS's main menu, SHIFT+AC/ON switches the
  * calculator off (both after C47 has saved its state).
  * Time: a 1 kHz timer counts milliseconds and wakes the CPU from sleep().
@@ -32,8 +32,23 @@ static int tick(void) {
 }
 
 
-// gint key code -> DMCP key code (R47 position), 0 = not mapped
+// gint key code -> DMCP key code, 0 = not mapped
 static uint8_t keymap[256];
+
+// The table below names R47 key positions (1..37 row by row, F1..F6 = 38..43). The R47
+// hardware sends DMCP's (DM42) codes, which C47 turns back into positions (convertKeyCode in
+// upstream src/c47/c47.c): six keys differ, so they are sent as the code that becomes them.
+static int codeOfPosition(int pos) {
+  switch(pos) {
+    case 11: return 28;   // f
+    case 18: return 11;   // XEQ
+    case 23: return 18;   // up
+    case 28: return 23;   // down
+    case 15: return 16;   // CHS
+    case 16: return 15;   // EEX
+    default: return pos;
+  }
+}
 
 static void mapKeys(void) {
   static const uint8_t pairs[][2] = {
@@ -57,7 +72,7 @@ static void mapKeys(void) {
     {KEY_0, 34}, {KEY_DOT, 35}, {KEY_ADD, 37},
   };
   for(unsigned i = 0; i < sizeof(pairs) / sizeof(pairs[0]); i++) {
-    keymap[pairs[i][0]] = pairs[i][1];
+    keymap[pairs[i][0]] = codeOfPosition(pairs[i][1]);
   }
 }
 

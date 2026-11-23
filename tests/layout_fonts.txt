@@ -1,0 +1,14 @@
+# The font browser (FBR, found in the FCNS catalog), first pages of each font.
+wait 3000
+key SHIFT_F ADD F1
+wait 300
+key LN SQRT 4
+wait 500
+key F2
+wait 500
+shot fbr_numeric.ppm
+shotfull fbr_numeric_full.ppm
+key DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN
+wait 500
+shot fbr_later.ppm
+shotfull fbr_later_full.ppm

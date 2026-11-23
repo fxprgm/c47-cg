@@ -21,8 +21,8 @@
 
 #define LINE_STRIDE 52
 
-static uint8_t lcdMemory[SCREEN_HEIGHT * LINE_STRIDE + 4] __attribute__((aligned(4)));
-static uint8_t shown[SCREEN_HEIGHT][LCD_LINE_SIZE] __attribute__((aligned(4)));
+static uint8_t lcdMemory[LCD_Y * LINE_STRIDE + 4] __attribute__((aligned(4)));
+static uint8_t shown[LCD_Y][LCD_LINE_SIZE] __attribute__((aligned(4)));
 static int bufCleared = 0;
 
 
@@ -32,7 +32,7 @@ const uint8_t *dmcp_shown_line(int row) {
 
 
 uint8_t *lcd_line_addr(int y) {
-  if(y < 0 || y >= SCREEN_HEIGHT) {
+  if(y < 0 || y >= LCD_Y) {
     y = 0;
   }
   lcdMemory[LINE_STRIDE * y] = 1u;
@@ -41,7 +41,7 @@ uint8_t *lcd_line_addr(int y) {
 
 
 static void showRow(int row, const uint8_t *data) {
-  if(row < 0 || row >= SCREEN_HEIGHT) {
+  if(row < 0 || row >= LCD_Y) {
     return;
   }
   memcpy(shown[row], data, LCD_LINE_SIZE);
@@ -57,7 +57,7 @@ void LCD_write_line(uint8_t *buf) {
     row = (buf - lcdMemory) / LINE_STRIDE;
   }
   else {
-    row = SCREEN_HEIGHT - 1 - buf[1];
+    row = LCD_Y - 1 - buf[1];
   }
   showRow(row, buf + 2);
   buf[0] = 0u;
@@ -65,17 +65,17 @@ void LCD_write_line(uint8_t *buf) {
 
 
 void lcd_clear_buf(void) {
-  for(int row = 0; row < SCREEN_HEIGHT; row++) {
+  for(int row = 0; row < LCD_Y; row++) {
     uint8_t *line = lcdMemory + LINE_STRIDE * row;
     memset(line + 2, 0xFF, LCD_LINE_SIZE);
-    line[1] = SCREEN_HEIGHT - 1 - row;
+    line[1] = LCD_Y - 1 - row;
     line[0] = 1u;
   }
 }
 
 
 void lcd_refresh(void) {
-  for(int row = 0; row < SCREEN_HEIGHT; row++) {
+  for(int row = 0; row < LCD_Y; row++) {
     if(lcdMemory[LINE_STRIDE * row]) {
       LCD_write_line(lcdMemory + LINE_STRIDE * row);
     }
@@ -95,7 +95,7 @@ void lcd_refresh_wait(void) {
 
 
 void lcd_forced_refresh(void) {
-  for(int row = 0; row < SCREEN_HEIGHT; row++) {
+  for(int row = 0; row < LCD_Y; row++) {
     LCD_write_line(lcdMemory + LINE_STRIDE * row);
   }
   plat_flush();
@@ -103,7 +103,7 @@ void lcd_forced_refresh(void) {
 
 
 void lcd_refresh_lines(int ln, int cnt) {
-  for(int row = ln; row < ln + cnt && row < SCREEN_HEIGHT; row++) {
+  for(int row = ln; row < ln + cnt && row < LCD_Y; row++) {
     if(row >= 0) {
       LCD_write_line(lcdMemory + LINE_STRIDE * row);
     }
@@ -113,13 +113,13 @@ void lcd_refresh_lines(int ln, int cnt) {
 
 
 void bitblt24(uint32_t x, uint32_t dx, uint32_t y, uint32_t val, int blt_op, int fill) {
-  if(dx < 1 || dx > 24 || y >= SCREEN_HEIGHT) {
+  if(dx < 1 || dx > 24 || y >= LCD_Y) {
     return;
   }
-  if(x >= SCREEN_WIDTH || x + dx > SCREEN_WIDTH) {
+  if(x >= LCD_X || x + dx > LCD_X) {
     return;
   }
-  x = SCREEN_WIDTH - dx - x;
+  x = LCD_X - dx - x;
 
   const uint32_t byte_i   = x >> 3;
   const uint32_t bit_off  = x & 7u;
@@ -156,7 +156,7 @@ void bitblt24(uint32_t x, uint32_t dx, uint32_t y, uint32_t val, int blt_op, int
 
 void lcd_fill_rect(uint32_t x, uint32_t y, uint32_t dx, uint32_t dy, int val) {
   uint32_t endX = x + dx, endY = y + dy;
-  if(endX > SCREEN_WIDTH || endY > SCREEN_HEIGHT) {
+  if(endX > LCD_X || endY > LCD_Y) {
     return;
   }
   int blt_op = val ? BLT_OR : BLT_ANDN;

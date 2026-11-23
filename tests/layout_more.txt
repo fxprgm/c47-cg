@@ -1,0 +1,46 @@
+# SHOW, alpha input, an error, a binary integer, INFO's VERS and WHO, KEYMAP, the timer.
+wait 3000
+key 2 SQRT 1 0 0 0 0 0 0 0 0 0 MUL SHIFT_F DOT
+wait 500
+shot show.ppm
+shotfull show_full.ppm
+key EXIT
+key XEQ RDN
+wait 300
+shot error_label.ppm
+shotfull error_label_full.ppm
+key EXIT
+key SHIFT_F XEQ
+key 3 4 5 1 7 8 9 2
+wait 300
+shot alpha.ppm
+shotfull alpha_full.ppm
+key ENTER EXIT
+key 1 2 3 4 5 6 7 8 9 SHIFT_F 4 F4
+wait 500
+shot base_bin.ppm
+shotfull base_bin_full.ppm
+key SHIFT_G F1
+wait 500
+shot base_ws64.ppm
+shotfull base_ws64_full.ppm
+key EXIT EXIT
+key SHIFT_G EXIT F1
+wait 500
+shot vers.ppm
+shotfull vers_full.ppm
+key EXIT
+key SHIFT_G EXIT SHIFT_F F1
+wait 500
+shot who.ppm
+shotfull who_full.ppm
+key EXIT EXIT
+key SHIFT_G 1 F6
+wait 500
+shot keymap.ppm
+shotfull keymap_full.ppm
+key EXIT EXIT EXIT
+key SHIFT_G 2 F6
+wait 500
+shot timer.ppm
+shotfull timer_full.ppm

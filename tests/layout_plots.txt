@@ -1,0 +1,36 @@
+# Statistics: data, the scatter plot, a regression plot, a histogram.
+wait 3000
+key SHIFT_F DIV
+key 1 ENTER 2 F1
+key 2 ENTER 3 F1
+key 4 ENTER 5 F1
+key 7 ENTER 3 F1
+key 9 ENTER 8 F1
+key 1 2 ENTER 1 1 F1
+wait 300
+shot stat_data.ppm
+shotfull stat_data_full.ppm
+key SHIFT_G DIV
+wait 300
+key SHIFT_G F4
+wait 1000
+shot plot_scatter.ppm
+shotfull plot_scatter_full.ppm
+key EXIT EXIT EXIT
+key SHIFT_F DIV SHIFT_G F6
+wait 300
+shot menu_regr.ppm
+shotfull menu_regr_full.ppm
+key SHIFT_G F5
+wait 1000
+shot plot_assess.ppm
+shotfull plot_assess_full.ppm
+key EXIT EXIT EXIT
+key SHIFT_G DIV SHIFT_G F5
+wait 300
+key 0 F3 1 4 F5 7 F4 F1
+wait 300
+key F6
+wait 1000
+shot plot_histo.ppm
+shotfull plot_histo_full.ppm
