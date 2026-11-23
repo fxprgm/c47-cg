@@ -1,0 +1,42 @@
+# Full-screen views: error message, program mode, catalog, register/flag browsers, INFO.
+wait 3000
+key 1 ENTER 0 DIV
+wait 300
+shot error.ppm
+shotfull error_full.ppm
+key EXIT
+key 2 DOT 5 ENTER 1 7 DIV
+key SHIFT_F RS
+wait 500
+shot prgm_empty.ppm
+shotfull prgm_empty_full.ppm
+key SHIFT_G RS
+key 1 ENTER 2 ADD 3 MUL 4 SUB 5 DIV SQRT X2 LN LOG 7 8 9 ADD SHIFT_F 7 SHIFT_F 8 SHIFT_F 9 2 ADD 3 ADD 4 ADD
+wait 300
+shot prgm.ppm
+shotfull prgm_full.ppm
+key SHIFT_F RS
+wait 300
+key SHIFT_F ADD
+wait 500
+shot catalog.ppm
+shotfull catalog_full.ppm
+key DOWN DOWN
+wait 300
+shot catalog2.ppm
+shotfull catalog2_full.ppm
+key EXIT EXIT EXIT
+key SHIFT_G UP
+wait 500
+shot regbrowser.ppm
+shotfull regbrowser_full.ppm
+key EXIT
+key SHIFT_G DOWN
+wait 500
+shot flagbrowser.ppm
+shotfull flagbrowser_full.ppm
+key EXIT
+key SHIFT_G EXIT
+wait 500
+shot menu_info.ppm
+shotfull menu_info_full.ppm

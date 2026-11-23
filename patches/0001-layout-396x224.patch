@@ -1,0 +1,628 @@
+diff --git a/src/c47/browsers/asnBrowser.c b/src/c47/browsers/asnBrowser.c
+index e29cbe5..db6bd0e 100644
+--- a/src/c47/browsers/asnBrowser.c
++++ b/src/c47/browsers/asnBrowser.c
+@@ -12,9 +12,9 @@
+ 
+   #if defined(OPTION_ASNBROWSER)
+   #define ASN_KEY_NAME_LENGTH 24                               // The longest itemSoftmenuName is 15 bytes and the +NRM key wraps it in brackets, so 18 are needed and the rest is margin.
+-  TO_QSPI const int16_t KEY_X_5[6] = {-1, 80, 160, 240, 320, 400};
++  TO_QSPI const int16_t KEY_X_5[6] = {-1, 79, 158, 237, 316, SCREEN_WIDTH};   // c47-cg: was {-1, 80, 160, 240, 320, 400}
+   static void fnAsnDisplay(uint8_t page) {                // Heavily modified by JM from the original fnShow
+-  #define YOFF 32
++  #define YOFF 20                                         // c47-cg: was 32, with the footer at 220 instead of SCREEN_HEIGHT - 20
+     int16_t x1, x2, yy;
+     int kk = 0;
+     int16_t key;
+@@ -38,7 +38,7 @@
+       case 6:   showString("alpha g-shift mapping",      &standardFont, 30, YOFF, vmNormal, false, false); break;
+       default:break;
+     }
+-    showString( "[" STD_UP_ARROW "][" STD_DOWN_ARROW "] Browse - [.] Toggle STD/USER View", &standardFont, 20, 220, vmNormal, false, false);
++    showString( "[" STD_UP_ARROW "][" STD_DOWN_ARROW "] Browse - [.] Toggle STD/USER View", &standardFont, 20, SCREEN_HEIGHT - 20, vmNormal, false, false);
+ 
+     for(key=0; key<37; key++) {
+       if(key<17) {
+diff --git a/src/c47/browsers/flagBrowser.c b/src/c47/browsers/flagBrowser.c
+index ddd4cd9..972d14e 100644
+--- a/src/c47/browsers/flagBrowser.c
++++ b/src/c47/browsers/flagBrowser.c
+@@ -7,6 +7,11 @@
+ 
+ #include "c47.h"
+ 
++// c47-cg: the grids were 22 px a row (ten rows under the status bar on a 240-row screen) and
++// 40 or 25 px a column (400 px across); these fit them to SCREEN_HEIGHT and SCREEN_WIDTH.
++#define FLG_PITCH ((SCREEN_HEIGHT - 20) / 10 > 22 ? 22 : (SCREEN_HEIGHT - 20) / 10)
++#define FLG_COL   (SCREEN_WIDTH / 10)
++#define FLG_LCOL  (SCREEN_WIDTH / 16)
+ 
+ 
+ TO_QSPI const  letteredFlagDisplay_t letteredFlagDisplay[] = {
+@@ -230,7 +235,7 @@ TO_QSPI const  letteredFlagDisplay_t letteredFlagDisplay[] = {
+ 
+     if(currentFlgScr == STATUS_SCREEN) {
+       for(f=0; f<min(9, line); f++) {
+-        showString(tmpString + CHARS_PER_LINE * f, &standardFont, 1, 22*f + 43, vmNormal, true, false);
++        showString(tmpString + CHARS_PER_LINE * f, &standardFont, 1, FLG_PITCH*f + 43, vmNormal, true, false);
+       }
+     }
+ 
+@@ -247,13 +252,13 @@ TO_QSPI const  letteredFlagDisplay_t letteredFlagDisplay[] = {
+         param = indexOfItems[systemFlag].param;
+         x1 = KEY_X[f%6]+2;
+         x2 = KEY_X[f%6+1]-1;
+-        y1 = 22*(f/6)+66-1-44;
++        y1 = FLG_PITCH*(f/6)+66-1-44;
+         if(getSystemFlag(param)) {
+           lcd_fill_rect(
+             x1,
+             y1,
+             x2-x1,
+-            22*(f/6)+66+20-1-44-y1+1,
++            FLG_PITCH*(f/6)+66+FLG_PITCH-2-1-44-y1+1,
+             LCD_EMPTY_VALUE);
+         }
+         sprintf(tmpString, "%s", indexOfItems[systemFlag].itemCatalogName);
+@@ -266,10 +271,10 @@ TO_QSPI const  letteredFlagDisplay_t letteredFlagDisplay[] = {
+ 
+       for(f=0; f<=99/*79*/; f++) {                                          //JM 99
+         if(getFlag(f)) {
+-          lcd_fill_rect(40*(f%10)+1, 22*(f/10)+66-1-44,  40*(f%10)+39-(40*(f%10)+1), 22*(f/10)+66+20-1-44-(22*(f/10)+66-1-44)+1, LCD_EMPTY_VALUE);
++          lcd_fill_rect(FLG_COL*(f%10)+1, FLG_PITCH*(f/10)+66-1-44,  FLG_COL*(f%10)+FLG_COL-1-(FLG_COL*(f%10)+1), FLG_PITCH*(f/10)+66+FLG_PITCH-2-1-44-(FLG_PITCH*(f/10)+66-1-44)+1, LCD_EMPTY_VALUE);
+         }
+         sprintf(tmpString, "%d", f);
+-        showString(tmpString, &standardFont, 40*(f%10) + 19 - stringWidth(tmpString, &standardFont, false, false)/2, 22*(f/10)+66-1-44, getFlag(f) ? vmReverse : vmNormal, true, true); //JM-44
++        showString(tmpString, &standardFont, FLG_COL*(f%10) + FLG_COL/2 - 1 - stringWidth(tmpString, &standardFont, false, false)/2, FLG_PITCH*(f/10)+66-1-44, getFlag(f) ? vmReverse : vmNormal, true, true); //JM-44
+       }
+     }
+ 
+@@ -302,11 +307,11 @@ TO_QSPI const  letteredFlagDisplay_t letteredFlagDisplay[] = {
+         // Local Flags
+         for(f=0; f<NUMBER_OF_LOCAL_FLAGS; f++) {
+           if(getFlag(FIRST_LOCAL_FLAG + f)) {
+-            lcd_fill_rect(25*(f%16)+1, 22*(f/16)+175, 22, 21,  LCD_EMPTY_VALUE);
++            lcd_fill_rect(FLG_LCOL*(f%16)+1, 22*(f/16)+175, FLG_LCOL-3, 21,  LCD_EMPTY_VALUE);
+           }
+ 
+           sprintf(tmpString, "%d", f);
+-          showString(tmpString, &standardFont, 25*(f%16)+5+4*(f<=9), 22*(f/16)+175, getFlag(FIRST_LOCAL_FLAG + f) ? vmReverse : vmNormal, true, true);     //JM-44
++          showString(tmpString, &standardFont, FLG_LCOL*(f%16)+5+4*(f<=9)-(25-FLG_LCOL)/2, 22*(f/16)+175, getFlag(FIRST_LOCAL_FLAG + f) ? vmReverse : vmNormal, true, true);     //JM-44
+         }
+       }
+     }
+diff --git a/src/c47/browsers/fontBrowser.c b/src/c47/browsers/fontBrowser.c
+index 3ec6498..f2245a7 100644
+--- a/src/c47/browsers/fontBrowser.c
++++ b/src/c47/browsers/fontBrowser.c
+@@ -2,6 +2,7 @@
+ // SPDX-FileCopyrightText: Copyright The WP43 and C47 Authors
+ 
+ #include "c47.h"
++// c47-cg: the footer lines below were at row 220, which is SCREEN_HEIGHT - 20 on a 240-row screen
+ 
+   //TO_QSPI static const char bugScreenShowFonts[] = "In function showFonts: This should never happen!";
+ 
+@@ -129,16 +130,16 @@
+       }
+ 
+       if(currentFntScr == 1) {
+-        showString("Numeric font. Press " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Numeric font. Press " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+       else {
+-        showString("Numeric font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Numeric font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+ 
+ 
+       sprintf(tmpString, "%d/%d", currentFntScr, numScreensNumericFont + numScreensNumericFontBold + numScreensStandardFont + numScreensTinyFont);
+ 
+-      showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), 220, vmNormal, false, true);
++      showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), SCREEN_HEIGHT - 20, vmNormal, false, true);
+     }
+ 
+ 
+@@ -163,14 +164,14 @@
+       }
+ 
+       if(currentFntScr == 1) {
+-        showString("Numeric font bold. Press " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Numeric font bold. Press " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+       else {
+-        showString("Numeric font bold. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Numeric font bold. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+ 
+       sprintf(tmpString, "%d/%d", currentFntScr, numScreensNumericFont + numScreensNumericFontBold + numScreensStandardFont + numScreensTinyFont);
+-      showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), 220, vmNormal, false, true);
++      showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), SCREEN_HEIGHT - 20, vmNormal, false, true);
+     }
+ 
+ 
+@@ -196,14 +197,14 @@
+       }
+ 
+       if(currentFntScr == numScreensNumericFont+numScreensStandardFont+numScreensTinyFont) {
+-        showString("Standard font. Press " STD_UP_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Standard font. Press " STD_UP_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+       else {
+-        showString("Standard font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Standard font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+ 
+       sprintf(tmpString, "%d/%d", currentFntScr, numScreensNumericFont + numScreensNumericFontBold + numScreensStandardFont + numScreensTinyFont);
+-      showString(tmpString, &standardFont, SCREEN_WIDTH-stringWidth(tmpString, &standardFont, false, true), 220, vmNormal, false, true);
++      showString(tmpString, &standardFont, SCREEN_WIDTH-stringWidth(tmpString, &standardFont, false, true), SCREEN_HEIGHT - 20, vmNormal, false, true);
+     }
+ 
+ 
+@@ -227,14 +228,14 @@
+       }
+ 
+       if(currentFntScr == numScreensNumericFont + numScreensNumericFontBold + numScreensStandardFont + numScreensTinyFont) {
+-        showString("Tiny font. Press " STD_UP_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Tiny font. Press " STD_UP_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+       else {
+-        showString("Tiny font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, 220, vmNormal, false, false);
++        showString("Tiny font. Press " STD_UP_ARROW ", " STD_DOWN_ARROW " or EXIT", &standardFont, 5, SCREEN_HEIGHT - 20, vmNormal, false, false);
+       }
+ 
+       sprintf(tmpString, "%d/%d", currentFntScr, numScreensNumericFont + numScreensNumericFontBold + numScreensStandardFont + numScreensTinyFont);
+-      showString(tmpString, &standardFont, SCREEN_WIDTH-stringWidth(tmpString, &standardFont, false, true), 220, vmNormal, false, true);
++      showString(tmpString, &standardFont, SCREEN_WIDTH-stringWidth(tmpString, &standardFont, false, true), SCREEN_HEIGHT - 20, vmNormal, false, true);
+     }
+ 
+     else {
+diff --git a/src/c47/browsers/registerBrowser.c b/src/c47/browsers/registerBrowser.c
+index e23edff..9999152 100644
+--- a/src/c47/browsers/registerBrowser.c
++++ b/src/c47/browsers/registerBrowser.c
+@@ -10,6 +10,11 @@
+ 
+ 
+ #if defined(OPTION_REGBROWSER)
++  // c47-cg: the rows were at 219 - 22 * row, ten of them (row 0, the bottom one, is the register
++  // the browser is on); a 224-row screen has room for nine.
++  #define RBR_Y(row) (SCREEN_HEIGHT - 21 - 22 * (row))
++  #define RBR_ROWS   ((SCREEN_HEIGHT - 20) / 22)
++
+   static void _showRegisterInRbr(calcRegister_t regist, int16_t registerNameWidth) {
+     switch(getRegisterDataType(regist)) {
+       case dtReal34: {
+@@ -183,42 +188,42 @@
+     }
+ 
+     if(rbrMode == RBR_GLOBAL) { // Global registers
+-      for(int16_t row=0; row<10; row++) {
++      for(int16_t row=0; row<RBR_ROWS; row++) {
+         calcRegister_t regist = modulo(currentRegisterBrowserScreen + row, LAST_GLOBAL_REGISTER_SCREEN + RBR_INCDEC1);
+         if(regist <= LAST_SPARE_REGISTER){
+           registerName(tmpString, regist);
+ 
+           // register name or number
+-          registerNameWidth = showString(tmpString, &standardFont, 1, 219 - 22 * row, vmNormal, false, true);
++          registerNameWidth = showString(tmpString, &standardFont, 1, RBR_Y(row), vmNormal, false, true);
+ 
+           if((regist <  REGISTER_X && regist % 5 == 4) || (regist >= REGISTER_X && regist % 4 == 3)) {
+-            drawSinglePixelFullWidthLine(218 - 22 * row);
++            drawSinglePixelFullWidthLine(RBR_Y(row) - 1);
+           }
+ 
+           _showRegisterInRbr(regist, registerNameWidth);
+ 
+-          showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true) - 1, 219-22*row, vmNormal, false, true);
++          showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true) - 1, RBR_Y(row), vmNormal, false, true);
+         }
+       }
+     }
+ 
+     else if(rbrMode == RBR_LOCAL) { // Local registers
+       if(currentNumberOfLocalRegisters != 0) { // Local registers are allocated
+-        for(int16_t row=0; row<10; row++) {
++        for(int16_t row=0; row<RBR_ROWS; row++) {
+           calcRegister_t regist = currentRegisterBrowserScreen + row;
+           if(regist < FIRST_LOCAL_REGISTER + currentNumberOfLocalRegisters) {
+             sprintf(tmpString, "R.%02d:", regist - FIRST_LOCAL_REGISTER);
+ 
+             // register number
+-            registerNameWidth = showString(tmpString, &standardFont, 1, 219 - 22 * row, vmNormal, true, true);
++            registerNameWidth = showString(tmpString, &standardFont, 1, RBR_Y(row), vmNormal, true, true);
+ 
+             if(regist % 5 == 1) {
+-              drawSinglePixelFullWidthLine(218 - 22 * row);
++              drawSinglePixelFullWidthLine(RBR_Y(row) - 1);
+             }
+ 
+             _showRegisterInRbr(regist, registerNameWidth);
+ 
+-            showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), 219 - 22 * row, vmNormal, false, true);
++            showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), RBR_Y(row), vmNormal, false, true);
+           }
+         }
+       }
+@@ -230,22 +235,22 @@
+     }
+ 
+     else if(rbrMode == RBR_NAMED) { // Named variables
+-      for(int16_t row=0; row<10; row++) {
++      for(int16_t row=0; row<RBR_ROWS; row++) {
+         calcRegister_t regist = currentRegisterBrowserScreen + row;
+         if(regist < FIRST_NAMED_VARIABLE + numberOfNamedVariables) { // Named variables
+           stringCopy(tmpString, (char *)allNamedVariables[regist - FIRST_NAMED_VARIABLE].variableName + 1);
+           stringCopy(tmpString + stringByteLength(tmpString), ":");
+ 
+           // variable name
+-          registerNameWidth = showString(tmpString, &standardFont, 1, 219 - 22 * row, vmNormal, true, true);
++          registerNameWidth = showString(tmpString, &standardFont, 1, RBR_Y(row), vmNormal, true, true);
+ 
+           if((regist % 5 == 1) || (regist == FIRST_NAMED_VARIABLE + numberOfNamedVariables - 1)) {
+-            drawSinglePixelFullWidthLine(218 - 22 * row);
++            drawSinglePixelFullWidthLine(RBR_Y(row) - 1);
+           }
+ 
+           _showRegisterInRbr(regist, registerNameWidth);
+ 
+-          showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), 219 - 22 * row, vmNormal, false, true);
++          showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), RBR_Y(row), vmNormal, false, true);
+         }
+         else { // Reserved variables
+           if(regist < FIRST_RESERVED_VARIABLE) {
+@@ -257,15 +262,15 @@
+             sprintf(tmpString, "%s:", (char *)allReservedVariables[regist - FIRST_RESERVED_VARIABLE].reservedVariableName + 1);
+ 
+             // variable name
+-            registerNameWidth = showString(tmpString, &standardFont, 1, 219 - 22 * row, vmNormal, true, true);
++            registerNameWidth = showString(tmpString, &standardFont, 1, RBR_Y(row), vmNormal, true, true);
+ 
+             if(regist % 5 == 1) {
+-              drawSinglePixelFullWidthLine(218 - 22 * row);
++              drawSinglePixelFullWidthLine(RBR_Y(row) - 1);
+             }
+ 
+             _showRegisterInRbr(regist, registerNameWidth);
+ 
+-            showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), 219 - 22 * row, vmNormal, false, true);
++            showString(tmpString, &standardFont, SCREEN_WIDTH - stringWidth(tmpString, &standardFont, false, true), RBR_Y(row), vmNormal, false, true);
+           }
+         }
+       }
+diff --git a/src/c47/c47.c b/src/c47/c47.c
+index 5e25187..23f1af4 100644
+--- a/src/c47/c47.c
++++ b/src/c47/c47.c
+@@ -33,7 +33,7 @@ const font_t          *cursorFont;
+ TO_QSPI const char     baseDigits[63] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+ TO_QSPI const char     registerFlagLetters[27] = "XYZTABCDLIJKMNPQRSEFGHOUVW";
+ void                   (*confirmedFunction)(uint16_t);
+-TO_QSPI const int      KEY_X[7] = {-1, 66, 133, 200, 267, 333, 400}; // Softkey border positions
++TO_QSPI const int      KEY_X[7] = {-1, 65, 132, 198, 264, 330, SCREEN_WIDTH}; // Softkey border positions (c47-cg: 66, 133, 200, 267, 333, 400 on a 400-px screen)
+ 
+ uint8_t calcModel = (CALCMODEL == USER_R47 ? USER_R47f_g : CALCMODEL);          //Default set by compiler is "USER_R47" and the profile is changed to USER_R47f_g
+ 
+diff --git a/src/c47/c47Extensions/graphs.c b/src/c47/c47Extensions/graphs.c
+index a4738ca..ccff073 100644
+--- a/src/c47/c47Extensions/graphs.c
++++ b/src/c47/c47Extensions/graphs.c
+@@ -530,7 +530,7 @@ void graph_text(void) {
+     grphNumFormatter(tt, radixProcess(tmpbuf, "#"), ymaxd, 2, ")");
+     uint16_t ttw = showStringEnhanced(padEquals(tmpbuf, tt), &standardFont, 0, 0, vmNormal, false, false, NO_compress, NO_raise, NO_Show, NO_Bold, NO_LF);
+     ypos += 38;
+-    n = showString(padEquals(tmpbuf, ss), &standardFont, 160-3-2-ssw-ttw, ypos, vmNormal, false, false);
++    n = showString(padEquals(tmpbuf, ss), &standardFont, (SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH)-3-2-ssw-ttw, ypos, vmNormal, false, false);   // c47-cg: was 160, the graph's left edge
+     showString(padEquals(tmpbuf, tt), &standardFont, n+3, ypos, vmNormal, false, false);
+     grphNumFormatter(ss, "(", xmind, 2, "");
+     ypos += 19;
+diff --git a/src/c47/defines.h b/src/c47/defines.h
+index e3538a2..722c760 100644
+--- a/src/c47/defines.h
++++ b/src/c47/defines.h
+@@ -854,8 +854,8 @@
+ 
+ #define NUMERIC_FONT_HEIGHT                       36 // In pixel. Used in the font browser application
+ #define STANDARD_FONT_HEIGHT                      22 // In Pixel. Used in the font browser application
+-#define NUMBER_OF_NUMERIC_FONT_LINES_PER_SCREEN    5 // Used in the font browser application
+-#define NUMBER_OF_STANDARD_FONT_LINES_PER_SCREEN   8 // Used in the font browser application
++#define NUMBER_OF_NUMERIC_FONT_LINES_PER_SCREEN    4 // Used in the font browser application (c47-cg: 5 on a 240-row screen)
++#define NUMBER_OF_STANDARD_FONT_LINES_PER_SCREEN   7 // Used in the font browser application (c47-cg: 8 on a 240-row screen)
+ 
+ #define AIM_BUFFER_LENGTH                       1024 // WP=199 double byte glyphs + trailing 0 + 1 byte to round up to a 4 byte boundary; JM increase from WP43 to 512*2 so as to exceed the 508*2+extras;
+ #define TAM_BUFFER_LENGTH                         56 // Longest TAM prompt is ASSIGN of a conversion with a quoted key name, worst case 55 bytes:
+@@ -1624,22 +1624,27 @@ static inline uint8_t regCtoKS(const int16_t regC) {
+ 
+ 
+ 
+-#define SCREEN_WIDTH                             400 // Width of the screen
+-#define SCREEN_HEIGHT                            240 // Height of the screen
++// c47-cg (Casio fx-CG50 port): the CG50 shows 396x224 of the 400x240, so C47 lays out for that.
++// The status bar and the three softkey rows keep their heights, the four stack lines get 32 px
++// instead of 36. The lcd buffer stays 400x240 (DMCP's LCD_X, LCD_Y, and its pixel addressing);
++// its columns 396..399 and rows 224..239 are never shown.
++#define SCREEN_WIDTH                             396 // Width of the screen (c47-cg: 400 on DMCP)
++#define SCREEN_HEIGHT                            224 // Height of the screen (c47-cg: 240 on DMCP)
+ #define ON_PIXEL                            0x303030 // blue red green
+ #define OFF_PIXEL                           0xe0e0e0 // blue red green
+ #define SOFTMENU_STACK_SIZE                        8
+ #define TEMPORARY_INFO_OFFSET                      6 // Vertical offset for temporary informations. I find 4 looks better
+-#define REGISTER_LINE_HEIGHT                      36
++#define REGISTER_LINE_HEIGHT                      32 // c47-cg: 36 on the 240-row screen
+ 
+ #define Y_POSITION_OF_REGISTER_T_LINE             24 // 135 - REGISTER_LINE_HEIGHT*(registerNumber - REGISTER_X)
+-#define Y_POSITION_OF_REGISTER_Z_LINE             60
+-#define Y_POSITION_OF_REGISTER_Y_LINE             96
+-#define Y_POSITION_OF_REGISTER_X_LINE            132
++#define Y_POSITION_OF_REGISTER_Z_LINE             56 // c47-cg: 60, 96, 132 on the 240-row screen
++#define Y_POSITION_OF_REGISTER_Y_LINE             88
++#define Y_POSITION_OF_REGISTER_X_LINE            120
+ 
+ #define NUMBER_OF_DYNAMIC_SOFTMENUS               22
+ #define SOFTMENU_HEIGHT                           23
+ #define Y_POSITION_OF_MENU_TOP                   (SCREEN_HEIGHT - SOFTMENU_HEIGHT*3) // 171, first row of the three softkey rows, where fnMenuDump() and SNAPMENU start
++#define PEM_LINES                                ((Y_POSITION_OF_MENU_TOP - Y_POSITION_OF_REGISTER_T_LINE) / 21) // c47-cg: lines of the program listing, 21 px each above the softkeys: 7 on a 240-row screen, 6 on 224
+ 
+ 
+ // Status bar updating mode
+@@ -1679,7 +1684,7 @@ static inline uint8_t regCtoKS(const int16_t regC) {
+ #define X_TIME_NODATE                              25 // note: time start with the date absent: the date position, keeps the top left shift area free
+ #define X_TIME_WOY      (getSystemFlag(FLAG_TDM24) ? 17 : 12) // note: time start when WoY follows and the date is absent; left of X_TIME_NODATE, the longer 12h time further
+ #define X_WOY                                      81 // note: WoY start behind the date or the time (10 character date width); a shorter predecessor is padded up to this column
+-#define X_REAL_COMPLEX        (X_TIME             +91)// note: this is for both dow or time, not both
++#define X_REAL_COMPLEX        (X_TIME             +91 - (400 - SCREEN_WIDTH))// note: this is for both dow or time, not both; c47-cg: the indicators from here to the battery move left as much as the screen is narrower
+ #define X_HOURGLASS_GRAPHS    (X_REAL_COMPLEX     + 4)//
+ #define X_COMPLEX_MODE        (X_HOURGLASS_GRAPHS + 6)//
+ #define X_COMPLEX_MODE_ADJ               -8           // note: auto moved left if REAL_COMPLEX is not present
+diff --git a/src/c47/display.c b/src/c47/display.c
+index ebf4ea4..88197f3 100644
+--- a/src/c47/display.c
++++ b/src/c47/display.c
+@@ -4041,7 +4041,7 @@ XFNentryPoint:
+         if(IntShowMode == SHOWSML) {
+           SHOW_reset();
+           temporaryInformation = TI_SHOW_REGISTER_SMALL;
+-          numberOfLines = 10;
++          numberOfLines = 9;                                                   // c47-cg: was 10, the lines are 21 px
+           prepIntoLines(errorMessage, true, last, &source, &standardFont, SCREEN_WIDTH, numberOfLines, startingLine);
+           if(tmpString[0] != 0) {
+             goto goBreak1; //break if first line first character is non-terminator and display
+@@ -4059,7 +4059,7 @@ XFNentryPoint:
+         if(IntShowMode == SHOWTNY) {
+           SHOW_reset();
+           temporaryInformation = TI_SHOW_REGISTER_TINY;
+-          numberOfLines = min(21, SHOWLineMax);
++          numberOfLines = min(20, SHOWLineMax);                                // c47-cg: was 21, the lines are 10 px
+           startingLine = 0;
+           prepIntoLines(errorMessage, true, last, &source, &tinyFont, SCREEN_WIDTH, numberOfLines, startingLine);
+ 
+@@ -4330,7 +4330,7 @@ goBreak1:
+ 
+         if(IntShowMode == SHOWSML) {
+           temporaryInformation = TI_SHOW_REGISTER_SMALL;
+-          numberOfLines = 10;
++          numberOfLines = 9;                                                   // c47-cg: was 10
+           prepIntoLines(REGISTER_STRING_DATA(showRegis), false, last, &source, &standardFont, SCREEN_WIDTH, numberOfLines, 0);
+         }
+         else {
+diff --git a/src/c47/plotstat.c b/src/c47/plotstat.c
+index a6bfd89..0f9d139 100644
+--- a/src/c47/plotstat.c
++++ b/src/c47/plotstat.c
+@@ -268,8 +268,8 @@ void removePixel(uint32_t x, uint32_t y) {
+ 
+ void clearScreenPixels(void) {
+   lcd_fill_rect(SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH, 0, SCREEN_HEIGHT_GRAPH, SCREEN_HEIGHT_GRAPH, LCD_SET_VALUE);
+-  lcd_fill_rect(0, Y_POSITION_OF_REGISTER_T_LINE, SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH, 171-5-Y_POSITION_OF_REGISTER_T_LINE+1, LCD_SET_VALUE);
+-  lcd_fill_rect(19, 171-5, SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH-19+1, 5, LCD_SET_VALUE);
++  lcd_fill_rect(0, Y_POSITION_OF_REGISTER_T_LINE, SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH, Y_POSITION_OF_MENU_TOP-5-Y_POSITION_OF_REGISTER_T_LINE+1, LCD_SET_VALUE);   // c47-cg: 171 was the menu top
++  lcd_fill_rect(19, Y_POSITION_OF_MENU_TOP-5, SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH-19+1, 5, LCD_SET_VALUE);
+ }
+ 
+ 
+@@ -354,7 +354,7 @@ void plotline2(int16_t xo, int16_t yo, int16_t xn, int16_t yn) {
+   static bool_t ifAnyMax(uint16_t *px, uint16_t *py, int cnt) {
+     for(int rr = 0; rr < cnt; rr++) {
+       //printf("%d %d\n",px[rr],py[rr]);
+-      if(px[rr] < 1 || px[rr] > 398 || py[rr] < 1 || py[rr] > 238) {
++      if(px[rr] < 1 || px[rr] > SCREEN_WIDTH - 2 || py[rr] < 1 || py[rr] > SCREEN_HEIGHT - 2) {   // c47-cg: was 398, 238
+         return true;
+       }
+     }
+@@ -1198,7 +1198,7 @@ void grphNumFormatter(char* s02, const char* s01, double inreal, int8_t digits,
+ 
+ #define horOffsetR 109+5 //digit righ side aliognment
+ #define autoinc 19 //text line spacing
+-#define autoshift -4 //text line offset
++#define autoshift -12 //text line offset; c47-cg: was -4. The lines count from the Z line, 4 px higher on 224 rows, and the softkeys below them are 16 px higher: 12 more is what fits between the status bar and the softkeys
+ #define horOffset 1 //labels from the left
+ 
+ 
+@@ -1516,7 +1516,7 @@ currentKeyCode = 255;
+       grphNumFormatter(ss, "(", xmaxd, 2, "");
+       grphNumFormatter(tt, radixProcess(tmpbuf, "#"), ymaxd, 2, ")");
+       strcat(tt, padEquals(tmpbuf, ss));
+-      n = showString(padEquals(tmpbuf, ss), &standardFont, 160-2-3-2 - stringWidth(tt, &standardFont, false, false), Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index + 2   -3  +autoshift, vmNormal, false, false);
++      n = showString(padEquals(tmpbuf, ss), &standardFont, (SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH)-2-3-2 - stringWidth(tt, &standardFont, false, false), Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index + 2   -3  +autoshift, vmNormal, false, false);   // c47-cg: was 160, the graph's left edge
+       grphNumFormatter(ss, radixProcess(tmpbuf, "#"), ymaxd, 2, ")");
+       showString(padEquals(tmpbuf, ss), &standardFont, n+3,           Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index++  -3  + autoshift + 2, vmNormal, false, false);
+ 
+@@ -1850,7 +1850,7 @@ void graphDrawLRline(uint16_t selection) {
+         uint16_t ssw = showStringEnhanced(padEquals(tmpbuf, ss), &standardFont, 0, 0, vmNormal, false, false, NO_compress, NO_raise, NO_Show, NO_Bold, NO_LF);
+         grphNumFormatter(tt, radixProcess(tmpbuf, "#"), ymaxd, 2, ")");
+         uint16_t ttw = showStringEnhanced(padEquals(tmpbuf, tt), &standardFont, 0, 0, vmNormal, false, false, NO_compress, NO_raise, NO_Show, NO_Bold, NO_LF);
+-        n = showString(padEquals(tmpbuf, ss), &standardFont, 160-3-2-ssw-ttw, Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index + 2       +autoshift, vmNormal, false, false);
++        n = showString(padEquals(tmpbuf, ss), &standardFont, (SCREEN_WIDTH-SCREEN_HEIGHT_GRAPH)-3-2-ssw-ttw, Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index + 2       +autoshift, vmNormal, false, false);   // c47-cg: was 160
+         showString(padEquals(tmpbuf, tt), &standardFont, n+3, Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index++ +autoshift + 2, vmNormal, false, false);
+         grphNumFormatter(ss, "(", xmind, 2, "");
+         n = showString(padEquals(tmpbuf, ss), &standardFont, horOffset, Y_POSITION_OF_REGISTER_Z_LINE + autoinc*index    -2  +autoshift + 2, vmNormal, false, false);
+diff --git a/src/c47/programming/manage.c b/src/c47/programming/manage.c
+index c5a9290..d8a82be 100644
+--- a/src/c47/programming/manage.c
++++ b/src/c47/programming/manage.c
+@@ -519,7 +519,7 @@ void fnPem(uint16_t unusedButMandatoryParameter) {
+     //
+     uint32_t currentStepNumber, firstDisplayedStepNumber;
+     uint16_t line, firstLine;
+-    uint16_t stepsThatWouldBeDisplayed = 7;
++    uint16_t stepsThatWouldBeDisplayed = PEM_LINES;   // c47-cg: was 7
+     uint8_t *step, *nextStep;
+     bool_t lblOrEnd;
+     videoMode_t vm = vmNormal;
+@@ -591,7 +591,7 @@ void fnPem(uint16_t unusedButMandatoryParameter) {
+       }
+     #endif // OPTION_STRUCT_INDENT
+ 
+-    for(line=firstLine; line<7; line++) {
++    for(line=firstLine; line<PEM_LINES; line++) {   // c47-cg: was line<7
+       nextStep = findNextStep(step);
+       //uint16_t stepSize = (uint16_t)(nextStep - step);
+       sprintf(tmpString, "%04d:" STD_SPACE_4_PER_EM, firstDisplayedLocalStepNumber + line - lineOffset + lineOffsetTam);
+@@ -726,7 +726,7 @@ void fnPem(uint16_t unusedButMandatoryParameter) {
+         showString(tmpString, &standardFont, pemLeftOffset(Y_POSITION_OF_REGISTER_T_LINE + 21 * line) + (lblOrEndOrXeq ? 41 : gto ? 81 : 61), Y_POSITION_OF_REGISTER_T_LINE + 21 * line, vmNormal,  false, false);
+       #endif // OPTION_STRUCT_INDENT
+       offset = 300;
+-      while(numberOfExtraLines && line <= 5) {
++      while(numberOfExtraLines && line <= PEM_LINES - 2) {   // c47-cg: was line <= 5
+         line++;
+         showString(tmpString + offset, &standardFont, pemLeftOffset(Y_POSITION_OF_REGISTER_T_LINE + 21 * (line)) + 61 + pemIndent, Y_POSITION_OF_REGISTER_T_LINE + 21 * (line), vmNormal,  false, false);
+         numberOfExtraLines--;
+diff --git a/src/c47/screen.c b/src/c47/screen.c
+index 8231f9f..b2d4dd2 100644
+--- a/src/c47/screen.c
++++ b/src/c47/screen.c
+@@ -724,7 +724,7 @@ void execTimerApp(uint16_t timerType) {
+     uint8_t lineCount, maxLine;
+     lineCount = greyType ? SOFTMENU_HEIGHT - 3 : 3;
+     if(yUnderlined <= 2) {
+-      maxLine = 239 - SOFTMENU_HEIGHT * (yUnderlined);
++      maxLine = SCREEN_HEIGHT - 1 - SOFTMENU_HEIGHT * (yUnderlined);   // c47-cg: was 239 - ...
+       // reset display to the buffer without shade
+       lcd_refresh_lines (maxLine-lineCount, lineCount);
+     }
+@@ -734,7 +734,7 @@ void execTimerApp(uint16_t timerType) {
+     }
+     uint8_t xBg[6], xIndex, line;
+     uint16_t j, buff_bit, colIncrease = greyType ? 5 : 2;
+-    maxLine = 238 - SOFTMENU_HEIGHT * (ySoftkey);
++    maxLine = SCREEN_HEIGHT - 2 - SOFTMENU_HEIGHT * (ySoftkey);   // c47-cg: was 238 - ...
+     // Get current background from corner pixels
+     for(xIndex = 0;xIndex < 6; xIndex++) {
+       buff_bit = getLine_buffer_bit(KEY_X[xIndex]+1);
+@@ -1795,12 +1795,15 @@ return res;
+   }
+ 
+ 
++  #define line_h1 34                                                                 // c47-cg: SHOW's big-font lines, 37 px on 240 rows
+   void showBottomLine(void) {
+     int yoff = 0;
+     if(overrideShowBottomLine > 0) {                                                 //only a page that prints alternative renderings below the line asks for one:
+                                                                                     //real34 sets 30, or 40 with an angular mode, and complex34 sets 20. A long
+                                                                                     //integer, an XFN sum and the rest print nothing below it and get no line.
+-      yoff = SCREEN_HEIGHT - REGISTER_LINE_HEIGHT*(overrideShowBottomLine)/10.0f;    // 40 means 4.0 registers from bottom
++      // c47-cg: was SCREEN_HEIGHT - REGISTER_LINE_HEIGHT*(overrideShowBottomLine)/10.0f, which on 240 rows falls between
++      // showDisp's lines 6 - n/10 - 1 and 6 - n/10; this keeps it there with their 224-row spacing
++      yoff = Y_POSITION_OF_REGISTER_T_LINE - 3 + line_h1 * (60 - overrideShowBottomLine) / 10;    // 40 means 4.0 registers from bottom
+ 
+       int offs = (temporaryInformation == TI_SHOW_REGISTER_BIG ? - 2 : temporaryInformation == TI_SHOW_REGISTER_SMALL ? 0 : temporaryInformation == TI_SHOW_REGISTER_TINY ? 0 : 0);
+ 
+@@ -1824,7 +1827,6 @@ return res;
+ 
+ 
+   void showDisp(uint16_t offset, uint8_t _h1) {
+-    #define line_h1 37
+     const uint32_t line_hMultiLineEdOffset = Y_POSITION_OF_REGISTER_T_LINE - 3;
+ 
+     uint32_t w = stringWidthWithLimitC47(tmpString + offset, stdnumEnlarge, nocompress, SCREEN_WIDTH, true, true);
+@@ -3736,8 +3738,11 @@ static void displayLRtemporaryInformation(char *prefix1, char *prefix2, char *pr
+         if(regist == REGISTER_X) {
+           clearScreenExcludingStatusBar(203);   // the region guards in _selectiveClearScreen leave part of the menu strip uncleared
+           showSoftmenu(-MNU_SHOW);
+-          showStringEnhanced(whoStr1, &standardFont, 1, Y_POSITION_OF_REGISTER_T_LINE +30 -33, vmNormal, true, true, NO_compress, NO_raise, DO_Show, NO_Bold, DO_LF);
+-          showStringEnhanced(whoStr2, &tinyFont,     1, Y_POSITION_OF_REGISTER_X_LINE +50 -78, vmNormal, true, true, NO_compress, NO_raise, DO_Show, NO_Bold, DO_LF);
++          // c47-cg: whoStr1 was 4 px lower (its ink started at row 24, now just under the status bar) and whoStr2 was at
++          // Y_POSITION_OF_REGISTER_X_LINE +50 -78, row 104, and not compressed. Compressed, whoStr2 keeps its line breaks on the
++          // 4 px narrower screen, and from row 96 its last line ends at row 223.
++          showStringEnhanced(whoStr1, &standardFont, 1, Y_POSITION_OF_REGISTER_T_LINE +30 -33 -4, vmNormal, true, true, NO_compress, NO_raise, DO_Show, NO_Bold, DO_LF);
++          showStringEnhanced(whoStr2, &tinyFont,     1, Y_POSITION_OF_REGISTER_T_LINE + 72, vmNormal, true, true, DO_compress, NO_raise, DO_Show, NO_Bold, DO_LF);
+           screenUpdatingMode |=  SCRUPD_MANUAL_MENU;
+         }
+         if(regist == REGISTER_T || regist == REGISTER_Z || regist == REGISTER_Y || regist == REGISTER_X) {
+@@ -3972,7 +3977,7 @@ static void displayLRtemporaryInformation(char *prefix1, char *prefix2, char *pr
+           case REGISTER_X:{
+               clearScreenOld(!clrStatusBar, clrRegisterLines, clrSoftkeys);
+               int16_t nn = 0;
+-              while(nn <= 9) {
++              while(nn <= 8) {                                  // c47-cg: was nn <= 9 (10 lines of 21 px, 9 fit 224 rows)
+                 showDispSmall( nn * SHOWLineSize, nn);          // L1
+                 nn++;
+               }
+@@ -7032,13 +7037,13 @@ void fnPoint(uint16_t unusedButMandatoryParameter) {
+       if(x < 0) {                  // Draw a vertical line at |x|
+         x = (x > -SCREEN_WIDTH ? -x : 0);       // -400 is mapped to x=0
+         a = (x == 0 ? 0 : 1);                   // to clip x
+-        b = (x == 0 ? 0 : (x == 399 ? 0 : 1));  // to clip width on borders
++        b = (x == 0 ? 0 : (x == SCREEN_WIDTH - 1 ? 0 : 1));  // to clip width on borders (c47-cg: was x == 399)
+         lcd_fill_rect(x - a, 0, 2 + b, SCREEN_HEIGHT, LCD_EMPTY_VALUE);
+       }
+       if(y < 0) {                  // Draw a horizontal line at |y|
+         y = (y > -SCREEN_HEIGHT ? -y : 0);      // -240 is mapped to y=0
+-        a = (y == 239 ? 1 : 2);                 // to clip y
+-        b = (y == 0 ? 0 : (y == 239 ? 0 : 1));  // to clip width on borders
++        a = (y == SCREEN_HEIGHT - 1 ? 1 : 2);                 // to clip y (c47-cg: was y == 239, here and below)
++        b = (y == 0 ? 0 : (y == SCREEN_HEIGHT - 1 ? 0 : 1));  // to clip width on borders
+         lcd_fill_rect(0, SCREEN_HEIGHT - y - a, SCREEN_WIDTH, 2 + b, LCD_EMPTY_VALUE);
+       }
+     }
+diff --git a/src/c47/screen.h b/src/c47/screen.h
+index 806b71a..d0e91a3 100755
+--- a/src/c47/screen.h
++++ b/src/c47/screen.h
+@@ -85,11 +85,12 @@
+ 
+   #define LeftGraphInfoX         0
+   #define topLeftGraphInfoY      Y_POSITION_OF_REGISTER_T_LINE-4
+-  #define widthGraphInfoBox      SCREEN_WIDTH - 240 - 2
+-  #define heightGraphInfoBox     240 - Y_POSITION_OF_REGISTER_T_LINE - SOFTMENU_HEIGHT * 3+4
+-  #define widthGraphInclBorder   240 + 2
++  // c47-cg: 240 was both the graph's size and the screen height
++  #define widthGraphInfoBox      SCREEN_WIDTH - SCREEN_HEIGHT - 2
++  #define heightGraphInfoBox     SCREEN_HEIGHT - Y_POSITION_OF_REGISTER_T_LINE - SOFTMENU_HEIGHT * 3+4
++  #define widthGraphInclBorder   SCREEN_HEIGHT + 2
+   #define menuHeightInclBorder   SOFTMENU_HEIGHT * 3
+-  #define topLeftMenuInclBorderY 240 - menuHeightInclBorder
++  #define topLeftMenuInclBorderY SCREEN_HEIGHT - menuHeightInclBorder
+   #if defined(MONITOR_CLRSCR)
+     #define clearScreen(cnt)                        do { lcd_fill_rect(0,  0, SCREEN_WIDTH, 240, LCD_SET_VALUE); forceSBupdate(); printf("CLEARFULLSCREEN Macro %u\n",         (uint16_t)cnt);} while(0)  //set last to undefined to force first refresh condition to be true
+     #define clearScreenExcludingStatusBar(cnt)      do { lcd_fill_rect(0, 20, SCREEN_WIDTH, 220, LCD_SET_VALUE);                  printf("CLEARFULLSCREEN EXCL SB Macro %u\n", (uint16_t)cnt);} while(0)  //set last to undefined to force first refresh condition to be true
+diff --git a/src/c47/softmenus.c b/src/c47/softmenus.c
+index a7dcd80..02ad9c5 100644
+--- a/src/c47/softmenus.c
++++ b/src/c47/softmenus.c
+@@ -2024,7 +2024,7 @@ bool_t maxfgLines(int16_t y) {
+       return false;
+     }
+     if(0 <= ySoftKey && ySoftKey <= 2) {
+-      *y1 = 217 - SOFTMENU_HEIGHT * ySoftKey;
++      *y1 = SCREEN_HEIGHT - SOFTMENU_HEIGHT * (ySoftKey + 1);   // c47-cg: was 217 - SOFTMENU_HEIGHT * ySoftKey
+       *y2 = *y1 + SOFTMENU_HEIGHT;
+     }
+     else {
+@@ -3753,7 +3753,7 @@ void showSoftmenuCurrentPart(void) {
+             if((getSystemFlag(FLAG_G_DOUBLETAP) && (BLOCK_DOUBLEPRESS_MENU(softmenu[m].menuItem, x, y))) ||           // Indicate disabled double tap
+                (softmenu[m].menuItem == -MNU_TIMERF && y == 0)) {                           // If stopwatch is open
+               int16_t yStrokeA = SCREEN_HEIGHT - (y-currentFirstItem/6)*23 - 1;
+-              int16_t xStrokeA=x*67 + 66 -12;
++              int16_t xStrokeA=KEY_X[x+1] -12;   // c47-cg: was x*67 + 66 -12
+               plotline1(xStrokeA +2+4, yStrokeA -16-3-1, xStrokeA +2+4+5-1, yStrokeA -16-3+5);
+             }
+           }
+@@ -3826,7 +3826,7 @@ void showSoftmenuCurrentPart(void) {
+     }
+ 
+     if(0 <= yDotted && yDotted <= 2) {
+-      yDotted = 217 - SOFTMENU_HEIGHT * yDotted;
++      yDotted = SCREEN_HEIGHT - SOFTMENU_HEIGHT * (yDotted + 1);   // c47-cg: was 217 - SOFTMENU_HEIGHT * yDotted
+ 
+       if(dottedTopLine && (!GRAPHMODE || softmenu[m].menuItem == -MNU_PLOT_FUNC)) {
+         menuTopLineY     = yDotted;

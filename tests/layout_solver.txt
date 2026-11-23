@@ -1,0 +1,23 @@
+# The solver on x*x-2, a TVM menu and the program catalog.
+wait 3000
+key SHIFT_F MUL F1
+key 3 SHIFT_G MUL 3 SHIFT_G SUB SHIFT_G 2 ENTER
+wait 300
+key F6
+wait 300
+key 1 F1
+wait 300
+key F1
+wait 3000
+shot solver_result.ppm
+shotfull solver_result_full.ppm
+key EXIT EXIT EXIT
+key SHIFT_G SUB
+wait 300
+shot menu_fin.ppm
+shotfull menu_fin_full.ppm
+key EXIT
+key SHIFT_F ADD F4
+wait 500
+shot catalog_progs.ppm
+shotfull catalog_progs_full.ppm

@@ -1,0 +1,20 @@
+# The matrix editor on a 3x4 matrix with long and complex elements, and the matrix on the stack.
+wait 3000
+key SHIFT_F 6
+key 3 ENTER 4 F1
+wait 300
+key F3
+wait 300
+key 1 ENTER 7 DIV
+key SHIFT_F RDN
+key 2 SQRT
+key 3 ENTER 4 SHIFT_F ENTER
+wait 300
+key 1 2 3 4 5 6 7 8 9 ENTER
+wait 500
+shot matrix_edit.ppm
+shotfull matrix_edit_full.ppm
+key EXIT
+wait 500
+shot matrix_stack.ppm
+shotfull matrix_stack_full.ppm

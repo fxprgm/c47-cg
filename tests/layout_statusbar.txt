@@ -1,0 +1,11 @@
+# The status bar with the time shown, complex results, a stopwatch, user mode and stack lift.
+wait 3000
+key SHIFT_G 2 DOWN F3
+wait 1500
+shot sbar_time.ppm
+shotfull sbar_time_full.ppm
+key EXIT
+key SHIFT_F DRG
+wait 500
+shot sbar_user.ppm
+shotfull sbar_user_full.ppm

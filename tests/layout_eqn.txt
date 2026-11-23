@@ -1,0 +1,32 @@
+# The equation editor, the equation list, the solver and a function graph.
+wait 3000
+key SHIFT_F MUL
+wait 300
+shot eqn_menu.ppm
+key F1
+wait 300
+key 3 SHIFT_G MUL 3 SHIFT_G SUB SHIFT_G 2
+wait 300
+shot eqn_edit.ppm
+shotfull eqn_edit_full.ppm
+key ENTER
+wait 500
+shot eqn_list.ppm
+shotfull eqn_list_full.ppm
+key F6
+wait 500
+shot eqn_solver.ppm
+shotfull eqn_solver_full.ppm
+key EXIT SHIFT_F F6
+wait 500
+shot eqn_grapher.ppm
+shotfull eqn_grapher_full.ppm
+key F5
+wait 300
+key 3 CHS F1 3 F2 3 CHS F3 8 F4
+wait 300
+shot eqn_graphs_menu.ppm
+key F6
+wait 5000
+shot eqn_graph.ppm
+shotfull eqn_graph_full.ppm
