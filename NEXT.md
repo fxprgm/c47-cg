@@ -17,6 +17,10 @@ is done or found. Newest decisions at the top of each section.
 - **Report the fxlibc strchr bug** to fxlibc (Planet Casio's forge,
   `Vhex-Kernel-Core/fxlibc`): draft in `docs/fxlibc-strchr-report.md`.
 
+- **The fxprgm intro page** (fxprgm/.github, profile/README.md): add the C47 entry with
+  docs/images/stack.png at the top; sessions can't push there (a repository whose name starts
+  with a dot can't be attached), so the user pastes it.
+
 ## To do
 
 - **Upstream sync**: a scheduled cloud task checks every second day at 02:23 UTC whether C47's
@@ -38,6 +42,9 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-24: v0.1.1 (the month was shown one too high: gint's rtc month is 1..12) published
+  by the workflow in 6 minutes, without building the toolchain; README screenshots from the
+  emulator (docs/images, tests/readme_*.txt, tests/emu_keys.py).
 - 2026-11-24: v0.1.0 (pre-release) published by the release workflow, built on GitHub from
   main; the toolchain built from source there and cached (run 1 failed on a GNU mirror with
   an expired certificate: the sources now come from ftp.gnu.org).
