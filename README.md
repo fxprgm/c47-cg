@@ -3,8 +3,30 @@
 A port of the [C47](https://gitlab.com/rpncalculators/c43) RPN calculator firmware, in its R47
 form, to the Casio fx-CG50 as a gint add-in.
 
-Status: in development. It runs on the calculator, and on the CG50's own OS in an emulator: the R47's functions, menus, saving state across MENU and restarts, and manual
-save/load through DMCP's file browser (rebuilt in `src/dmcp_ui.c`).
+Status: in development. It runs on the calculator, and on the CG50's own OS in an emulator:
+the R47's functions, menus, saving state across MENU and restarts, and manual save/load
+through DMCP's file browser (rebuilt in `src/dmcp_ui.c`).
+
+## Screenshots
+
+On the CG50's own OS (3.60, in an emulator), with C47's own fonts:
+
+<img src="docs/images/stack.png" width="396" alt="The stack: 20! as an exact integer, pi and the square root of 2 to 34 digits, and 3+4i in polar form, with the complex-number menu">
+
+The stack after a few calculations: 20! as an exact integer, π and √2 to 34 digits, 3+4i in
+polar form, and the complex-number menu.
+
+<img src="docs/images/graph.png" width="396" alt="A graph of y = sin(2x) times e to the minus x over 4, a damped oscillation">
+
+A damped oscillation, y = sin(2x)·e^(−x/4), typed in C47's equation editor and graphed.
+
+<img src="docs/images/program.png" width="396" alt="Program mode: the loop of a Fibonacci program, LBL 01 to GTO 01, with the programming menu">
+
+Keying in a program: the loop of an iterative Fibonacci (`LBL 'FIB' … LBL 01 + LASTx x⇄y DSE 00
+GTO 01 … RTN`; 10 XEQ FIB gives 55).
+
+The key scripts that make them are `tests/readme_*.txt` (for the PC test build and, through
+`tests/emu_keys.py`, the emulator).
 
 ## How it works
 
