@@ -42,16 +42,21 @@ then `Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc`, `Lephenixnoir/sh-elf-gcc` 
 2. `python3 tools/sync_upstream.py`: if a patch no longer applies, rework it on the new code.
 3. `python3 tools/build_host.py --mini-gmp`, run the key scripts; `fxsdk build-cg`;
    `python3 tools/test_bigendian.py --arch ppc`.
-4. Commit (UPSTREAM, any patch changes, NEXT.md), push, and release if anything changed.
+4. Commit (UPSTREAM, any patch changes, NEXT.md) and push: the push of UPSTREAM to main makes
+   the release (below).
 
 ## Releasing
 
-Made by hand on GitHub (pushing tags is refused from cloud sessions).
-`python3 tools/release.py X.Y.Z` (`--pre` for a pre-release) builds C47.g3a from main, puts
-it with its release text on the `builds` branch (`vX.Y.Z/`) and prints the steps: the user
-downloads it and creates the release vX.Y.Z on GitHub. In a conversation, also send the user
-the file. Versions: the last number for an upstream sync or a fix, the middle one for new
-features.
+GitHub does it: `.github/workflows/release.yml` builds C47.g3a from main and publishes release
+vX.Y.Z (the last tag's last number + 1; a pre-release below 1.0.0) with notes (C47's version,
+the upstream commits since the previous release, size and SHA-256) whenever UPSTREAM changes
+on main, or when run by hand (Actions, release, Run workflow; or the GitHub MCP tool that
+triggers a workflow run). Its toolchain comes from fxprgm/cg-toolchain through the repository
+secret CG_TOOLCHAIN_TOKEN, or is built from source and cached. Sessions never push tags (they
+are refused). For a release of a change other than an upstream sync, run the workflow by hand
+after pushing. Versions: the workflow takes the higher of the last tag + 1 (last number) and
+the version in CMakeLists.txt, so for new features raise CMakeLists.txt to the next middle
+number (0.2.0) before releasing.
 
 ## The emulator
 

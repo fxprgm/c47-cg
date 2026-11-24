@@ -9,16 +9,19 @@ is done or found. Newest decisions at the top of each section.
   integration, big factorials), MENU and back, SHIFT+AC/ON off and on, manual save/load
   (I/O menu: g then 0, SAVEST / LOADST).
 - **◀ and ▶**: unused so far; decide what they should do (e.g. UNDO, or a second ▲▼).
-- **Release v0.1.0 (pre-release)**: C47.g3a and its text are on the `builds` branch
-  (`v0.1.0/`); create the release by hand on GitHub (tools/release.py prints the steps).
+- **CG_TOOLCHAIN_TOKEN** (optional, makes releases take minutes instead of an hour when the
+  cache is cold): a fine-grained token, resource owner fxprgm, only the repository
+  cg-toolchain, permission Contents: read-only; saved in c47-cg, Settings, Secrets and
+  variables, Actions, as the repository secret CG_TOOLCHAIN_TOKEN.
 - **Report the fxlibc strchr bug** to fxlibc (Planet Casio's forge,
   `Vhex-Kernel-Core/fxlibc`): draft in `docs/fxlibc-strchr-report.md`.
 
 ## To do
 
 - **Upstream sync**: a scheduled cloud task checks every second day at 02:23 UTC whether C47's
-  master moved; only then does it sync, test, push and prepare a release on the `builds`
-  branch (or leave a `sync-<date>` branch if something broke), and the user gets its report.
+  master moved; only then does it sync, test and push (or leave a `sync-<date>` branch if
+  something broke), and the user gets its report. The push of UPSTREAM makes GitHub build
+  and publish the release (.github/workflows/release.yml).
   By hand: CLAUDE.md "Syncing with upstream C47".
 - **SNAP** (screenshots): `create_screenshot` in `src/dmcp_sys.c` saves nothing; write a 1-bit
   BMP of the 396x224 view to `\C47\SCREENS` as the R47 does.
@@ -36,8 +39,9 @@ is done or found. Newest decisions at the top of each section.
 
 - 2026-11-24: the CG50 toolchain prebuilt in the private repo fxprgm/cg-toolchain, restored
   by `tools/setup_env.py` (checked: same C47.g3a as with the source-built toolchain);
-  NEXT.md and CLAUDE.md; releases made by hand from the `builds` branch (tools/release.py);
-  the emulator's flash image in the private repo fxprgm/cg-flashfile.
+  NEXT.md and CLAUDE.md; releases built and published by GitHub Actions
+  (.github/workflows/release.yml); the emulator's flash image in the private repo
+  fxprgm/cg-flashfile.
 - 2026-11-23: DMCP's file browser and dialogs (`src/dmcp_ui.c`); fxlibc's strchr replaced;
   redraw after MENU and back; first run in the emulator on the real OS; display DMA bands
   aligned to 4 rows; big-endian test of upstream's suite; 396x224 layout; first build.

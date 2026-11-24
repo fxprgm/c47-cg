@@ -1,0 +1,151 @@
+# Builds C47.g3a from main and publishes it as a release, whenever UPSTREAM changes on main
+# (an upstream sync) or by hand (Actions, release, Run workflow). GitHub makes the tag.
+#
+# Version: the higher of the last vX.Y.Z tag + 1 (last number) and CMakeLists.txt's version
+# (raise that for new features: 0.2.0); a pre-release while below 1.0.0. The notes: C47's version, the upstream
+# commits since the previous release, the file's size and SHA-256.
+#
+# Toolchain: with the repository secret CG_TOOLCHAIN_TOKEN (a fine-grained token that can read
+# fxprgm/cg-toolchain), the prebuilt archive, in a few minutes; without it, GiteaPC builds the
+# toolchain from source (an hour or more) and the cache keeps it for the next runs. The
+# archive's paths are /root/.local, so the setup and the build run as root (sudo, HOME=/root).
+name: release
+on:
+  push:
+    branches: [main]
+    paths: [UPSTREAM]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      AS_ROOT: sudo env HOME=/root PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # tags and history, for the version and the notes
+
+      - name: Version
+        id: version
+        run: |
+          last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          cm=$(sed -n 's/^project(C47CG VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          v="$cm"
+          if [ -n "$last" ]; then
+            IFS=. read -r a b c <<< "${last#v}"
+            next="$a.$b.$((c + 1))"
+            # the higher of the last tag + 1 and CMakeLists.txt's version (raised for new features)
+            v=$(printf '%s\n%s\n' "$next" "$cm" | sort -V | tail -n1)
+          fi
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+          echo "last=$last" >> "$GITHUB_OUTPUT"
+          case "$v" in 0.*) echo "pre=--prerelease" >> "$GITHUB_OUTPUT";; *) echo "pre=" >> "$GITHUB_OUTPUT";; esac
+          echo "v$v (previous: ${last:-none})"
+
+      - name: Toolchain archive (prebuilt, private repo)
+        id: archive
+        env:
+          TOKEN: ${{ secrets.CG_TOOLCHAIN_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            git clone -q --depth 1 "https://x-access-token:${TOKEN}@github.com/fxprgm/cg-toolchain" ../cg-toolchain
+            echo "have=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "no CG_TOOLCHAIN_TOKEN: building the toolchain from source (or from the cache)"
+            echo "have=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Toolchain from the cache
+        if: steps.archive.outputs.have == 'no'
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/cg-toolchain-cache
+          key: cg-toolchain-fxsdk2.11-gint2.11-gcc14.1
+
+      - name: Toolchain from source (GiteaPC, an hour or more)
+        if: steps.archive.outputs.have == 'no' && steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q curl git python3 build-essential pkg-config patch wget cmake python3-pil \
+            libusb-1.0-0-dev libsdl2-dev libudisks2-dev libglib2.0-dev libpng-dev libncurses-dev \
+            libmpfr-dev libmpc-dev libgmp-dev libppl-dev flex bison texinfo
+          $AS_ROOT bash -c 'cd /tmp && git clone -q https://git.planet-casio.com/Lephenixnoir/giteapc.git && cd giteapc && python3 giteapc.py install -y Lephenixnoir/GiteaPC'
+          try() { for i in 1 2 3 4 5; do "$@" && return 0; echo "retry $i"; sleep 30; done; return 1; }
+          try $AS_ROOT giteapc install -y Lephenixnoir/fxsdk Lephenixnoir/sh-elf-binutils Lephenixnoir/sh-elf-gcc
+          try $AS_ROOT giteapc install -y Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc
+          try $AS_ROOT giteapc install -y Lephenixnoir/sh-elf-gcc
+          try $AS_ROOT giteapc install -y Lephenixnoir/gint
+          mkdir -p /tmp/cg-toolchain-cache
+          sudo bash -c 'cd /root/.local && tar -cf - bin/sh-elf-* bin/fxconv bin/fxconv.py bin/fxg1a bin/fxgxa bin/fxlink bin/fxsdk bin/fxsdk-gdb-bridge lib/cmake lib/libfxlink.a share/fxsdk | xz -T0 > /tmp/cg-toolchain-cache/cg-toolchain.tar.xz'
+
+      - name: Save the toolchain to the cache
+        if: steps.archive.outputs.have == 'no' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/cg-toolchain-cache
+          key: cg-toolchain-fxsdk2.11-gint2.11-gcc14.1
+
+      - name: Set up (apt, xlsxio, the toolchain)
+        run: |
+          dir=../cg-toolchain
+          if [ ! -f "$dir/cg-toolchain.tar.xz" ]; then dir=/tmp/cg-toolchain-cache; fi
+          sudo chmod 755 /root
+          $AS_ROOT python3 tools/setup_env.py "$dir"
+
+      - name: Upstream C47 and the generated sources
+        run: $AS_ROOT python3 tools/sync_upstream.py
+
+      - name: The PC test build, a key script
+        run: |
+          $AS_ROOT python3 tools/build_host.py --mini-gmp
+          cd tests && mkdir -p out && $AS_ROOT ../build/c47cg_host_mini smoke.txt host_files
+
+      - name: C47.g3a
+        run: |
+          $AS_ROOT fxsdk build-cg
+          sudo chown "$(id -u)" C47.g3a
+          ls -l C47.g3a
+
+      - name: Notes
+        run: |
+          up_new=$(sed -n 's/^commit=//p' UPSTREAM)
+          up_old=""
+          if [ -n "${{ steps.version.outputs.last }}" ]; then
+            up_old=$(git show "${{ steps.version.outputs.last }}:UPSTREAM" | sed -n 's/^commit=//p')
+          fi
+          c47v=$(sed -n 's/^#define VERSION1 "\([^"]*\)".*/\1/p' upstream/src/c47/defines.h)
+          sha=$(sha256sum C47.g3a | cut -d' ' -f1)
+          size=$(stat -c %s C47.g3a)
+          {
+            echo "C47 (R47 model) for the Casio fx-CG50 calculators, built from ${GITHUB_SHA:0:10}."
+            echo
+            echo "- C47 firmware $c47v, upstream commit ${up_new:0:10} (https://gitlab.com/rpncalculators/c43)"
+            echo "- \`C47.g3a\`: $size bytes, SHA-256 \`$sha\`"
+            echo
+            if [ -n "$up_old" ] && [ "$up_old" != "$up_new" ]; then
+              sudo git -C upstream fetch -q --depth 500 origin master || true
+              echo "Changes in C47 since the previous release:"
+              echo
+              sudo git -C upstream log --format='- %s' "${up_old}..${up_new}" 2>/dev/null | head -n 30 \
+                || echo "- (upstream ${up_old:0:10} to ${up_new:0:10})"
+              echo
+            fi
+            echo "Copy C47.g3a to the calculator's storage memory and start C47 from the main menu."
+            echo "Keys: https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/docs/KEYS.md"
+          } > notes.md
+          cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" C47.g3a --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "C47 for the fx-CG50 ${{ steps.version.outputs.tag }}" \
+            --notes-file notes.md ${{ steps.version.outputs.pre }}

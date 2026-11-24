@@ -3,8 +3,7 @@
 A port of the [C47](https://gitlab.com/rpncalculators/c43) RPN calculator firmware, in its R47
 form, to the Casio fx-CG50 as a gint add-in.
 
-Status: in development. It runs on the CG50's own OS in an emulator (not yet tried on a real
-calculator): the R47's functions, menus, saving state across MENU and restarts, and manual
+Status: in development. It runs on the calculator, and on the CG50's own OS in an emulator: the R47's functions, menus, saving state across MENU and restarts, and manual
 save/load through DMCP's file browser (rebuilt in `src/dmcp_ui.c`).
 
 ## How it works
@@ -35,18 +34,20 @@ Keys: [docs/KEYS.md](docs/KEYS.md).
 
 ## Installing
 
-Copy `C47.g3a` to the calculator's storage memory (USB, as any add-in) and start C47 from the
+Download `C47.g3a` from the [Releases](https://github.com/fxprgm/c47-cg/releases) page (built by
+GitHub from main after each sync with upstream C47; pre-releases while below 1.0), copy it to
+the calculator's storage memory (USB, as any add-in), and start C47 from the
 main menu. C47 keeps its files in the folder `\C47` there, and saves its state there when you
 press MENU or switch off, so it is as you left it next time.
 
 ## Not done yet
 
-- Not yet tried on a real calculator (only in an emulator running the CG50's own OS 3.60).
+- Only lightly tried on a real calculator so far; most testing is in an emulator running the
+  CG50's own OS 3.60.
 - SNAP (screenshots) saves nothing; the CG50 has no buzzer or IR printer, so BEEP/TONE and
   printing do nothing.
 - 4 pixels narrower than the R47: a few numbers that just fit on the R47 switch to scientific
   notation (see Testing).
-- No release yet: build it yourself (below).
 
 ## Testing
 
