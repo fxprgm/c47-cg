@@ -78,9 +78,21 @@ jobs:
             libmpfr-dev libmpc-dev libgmp-dev libppl-dev flex bison texinfo
           $AS_ROOT bash -c 'cd /tmp && git clone -q https://git.planet-casio.com/Lephenixnoir/giteapc.git && cd giteapc && python3 giteapc.py install -y Lephenixnoir/GiteaPC'
           try() { for i in 1 2 3 4 5; do "$@" && return 0; echo "retry $i"; sleep 30; done; return 1; }
-          try $AS_ROOT giteapc install -y Lephenixnoir/fxsdk Lephenixnoir/sh-elf-binutils Lephenixnoir/sh-elf-gcc
+          G=/root/.local/share/giteapc
+          try $AS_ROOT giteapc fetch Lephenixnoir/fxsdk Lephenixnoir/sh-elf-binutils Lephenixnoir/sh-elf-gcc \
+            Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc Lephenixnoir/gint
+          # The recipes download the GNU sources from ftpmirror.gnu.org, which redirects to a random
+          # mirror (one had an expired certificate); they skip the download when the file is there.
+          try sudo curl -fsSL -o $G/Lephenixnoir/sh-elf-binutils/binutils-2.42.tar.xz \
+            https://ftp.gnu.org/gnu/binutils/binutils-2.42.tar.xz
+          try sudo curl -fsSL -o $G/Lephenixnoir/sh-elf-gcc/gcc-14.1.0.tar.xz \
+            https://ftp.gnu.org/gnu/gcc/gcc-14.1.0/gcc-14.1.0.tar.xz
+          # a failed attempt can leave a half-extracted gcc that the next one would reuse
+          gcc_clean() { sudo bash -c "cd $G/Lephenixnoir/sh-elf-gcc && if [ -d gcc-14.1.0 ] && [ ! -f gcc-14.1.0/contrib/download_prerequisites ]; then rm -rf gcc-14.1.0 build; fi"; }
+          gcc_step() { gcc_clean; $AS_ROOT giteapc install -y "$@"; }
+          try gcc_step Lephenixnoir/fxsdk Lephenixnoir/sh-elf-binutils Lephenixnoir/sh-elf-gcc
           try $AS_ROOT giteapc install -y Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc
-          try $AS_ROOT giteapc install -y Lephenixnoir/sh-elf-gcc
+          try gcc_step Lephenixnoir/sh-elf-gcc
           try $AS_ROOT giteapc install -y Lephenixnoir/gint
           mkdir -p /tmp/cg-toolchain-cache
           sudo bash -c 'cd /root/.local && tar -cf - bin/sh-elf-* bin/fxconv bin/fxconv.py bin/fxg1a bin/fxgxa bin/fxlink bin/fxsdk bin/fxsdk-gdb-bridge lib/cmake lib/libfxlink.a share/fxsdk | xz -T0 > /tmp/cg-toolchain-cache/cg-toolchain.tar.xz'
