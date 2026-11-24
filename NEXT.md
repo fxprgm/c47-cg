@@ -9,10 +9,11 @@ is done or found. Newest decisions at the top of each section.
   integration, big factorials), MENU and back, SHIFT+AC/ON off and on, manual save/load
   (I/O menu: g then 0, SAVEST / LOADST).
 - **◀ and ▶**: unused so far; decide what they should do (e.g. UNDO, or a second ▲▼).
-- **CG_TOOLCHAIN_TOKEN** (optional, makes releases take minutes instead of an hour when the
-  cache is cold): a fine-grained token, resource owner fxprgm, only the repository
-  cg-toolchain, permission Contents: read-only; saved in c47-cg, Settings, Secrets and
-  variables, Actions, as the repository secret CG_TOOLCHAIN_TOKEN.
+- **CG_TOOLCHAIN_TOKEN**: the release workflow doesn't see it yet (runs 3 and 4 took the
+  no-token branch); it must be a repository secret of fxprgm/c47-cg (Settings, Secrets and
+  variables, Actions), not of cg-toolchain, an environment or Codespaces/Dependabot. Until
+  then the workflow uses the toolchain GitHub cached in run 4 (kept 7 days after its last
+  use; a cold cache means an hour's build from source).
 - **Report the fxlibc strchr bug** to fxlibc (Planet Casio's forge,
   `Vhex-Kernel-Core/fxlibc`): draft in `docs/fxlibc-strchr-report.md`.
 
@@ -37,6 +38,9 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-24: v0.1.0 (pre-release) published by the release workflow, built on GitHub from
+  main; the toolchain built from source there and cached (run 1 failed on a GNU mirror with
+  an expired certificate: the sources now come from ftp.gnu.org).
 - 2026-11-24: the CG50 toolchain prebuilt in the private repo fxprgm/cg-toolchain, restored
   by `tools/setup_env.py` (checked: same C47.g3a as with the source-built toolchain);
   NEXT.md and CLAUDE.md; releases built and published by GitHub Actions
