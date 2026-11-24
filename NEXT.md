@@ -16,8 +16,10 @@ is done or found. Newest decisions at the top of each section.
 
 ## To do
 
-- **Upstream sync** every day or two: bump `UPSTREAM`, `python tools/sync_upstream.py`, check
-  the patches still apply, build, run the tests (below), release if C47 changed.
+- **Upstream sync**: a scheduled cloud task checks every second day at 02:23 UTC whether C47's
+  master moved; only then does it sync, test, push and prepare a release on the `builds`
+  branch (or leave a `sync-<date>` branch if something broke), and the user gets its report.
+  By hand: CLAUDE.md "Syncing with upstream C47".
 - **SNAP** (screenshots): `create_screenshot` in `src/dmcp_sys.c` saves nothing; write a 1-bit
   BMP of the 396x224 view to `\C47\SCREENS` as the R47 does.
 - **Battery** in the status bar: `get_vbat` returns a fixed 3.3 V; read the CG50's battery
