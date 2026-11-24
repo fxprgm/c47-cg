@@ -19,10 +19,21 @@ README.md explains how the port works; docs/KEYS.md the keys.
 
 ## Toolchain
 
-fxSDK + gint + fxlibc + sh-elf-gcc, installed with GiteaPC into `~/.local` (bin on PATH).
-Building it takes over an hour, mostly fetching from Planet Casio's forge, which sometimes
-answers 503: retry. The PC side also needs meson, ninja, freetype2, gmp, gtk+-3.0 and
-xlsxio's `xlsxio_xlsx2csv` (built from https://github.com/brechtsanders/xlsxio).
+fxSDK + gint + fxlibc + sh-elf-gcc in `~/.local` (bin on PATH). The PC side also needs meson,
+ninja, freetype2, gmp, gtk+-3.0 and xlsxio's `xlsxio_xlsx2csv` (built from source).
+
+**In a fresh cloud session** (nothing installed): the private repo **fxprgm/cg-toolchain** holds
+a prebuilt archive of the CG50 toolchain (fxSDK 2.11, gint 2.11, GCC 14.1; 40 MB). Attach it
+(add_repo, read access), clone it next to this repo as `../cg-toolchain`, then
+`python3 tools/setup_env.py`: apt packages, xlsxio, and the toolchain unpacked into
+`~/.local`, in a few minutes. A build with it is identical to one with a toolchain built from
+source.
+
+Without that repo (or to update the toolchain): build it with GiteaPC, over an hour, mostly
+fetching from Planet Casio's forge, which sometimes answers 503 (retry):
+`giteapc install -y Lephenixnoir/fxsdk Lephenixnoir/sh-elf-binutils Lephenixnoir/sh-elf-gcc`,
+then `Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc`, `Lephenixnoir/sh-elf-gcc` again,
+`Lephenixnoir/gint`. Repack with the file list in cg-toolchain's README.
 
 ## Syncing with upstream C47
 
@@ -43,5 +54,5 @@ features.
 ## The emulator
 
 The add-in is run in the fx-CG50 emulator of hexbinoct/casio-cg50 (`emu_go/c47_probe_test.go`,
-see that repo's RECON_NOTES.md cont.27): it needs a CG50 flash image, which is not in any
-public repo.
+see that repo's RECON_NOTES.md cont.27): it needs a CG50 flash image (Casio's firmware), which
+is never put in a public repo. The private repo **fxprgm/cg-flashfile** is meant for it.
