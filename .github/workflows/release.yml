@@ -1,0 +1,27 @@
+# Publishes a release when a version tag (v*) is pushed. The add-in is not built here: the
+# CG50 toolchain takes over an hour to build. tools/release.py builds it, commits it to the
+# `builds` branch as <tag>/C47.g3a with <tag>/NOTES.md (and <tag>/PRERELEASE for a
+# pre-release), then pushes the tag; this job attaches that file to the release.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: builds
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          test -f "$TAG/C47.g3a" || { echo "no $TAG/C47.g3a on the builds branch"; exit 1; }
+          pre=""
+          if [ -f "$TAG/PRERELEASE" ]; then pre="--prerelease"; fi
+          gh release create "$TAG" "$TAG/C47.g3a" --repo "$GITHUB_REPOSITORY" \
+            --title "C47 for the fx-CG50 $TAG" --notes-file "$TAG/NOTES.md" --verify-tag $pre
