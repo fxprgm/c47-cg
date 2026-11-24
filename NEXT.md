@@ -9,9 +9,8 @@ is done or found. Newest decisions at the top of each section.
   integration, big factorials), MENU and back, SHIFT+AC/ON off and on, manual save/load
   (I/O menu: g then 0, SAVEST / LOADST).
 - **◀ and ▶**: unused so far; decide what they should do (e.g. UNDO, or a second ▲▼).
-- **Releases**: pushing a git tag is refused from cloud sessions, so `tools/release.py` stops
-  after putting the build on the `builds` branch (v0.1.0 is there). Decide: allow tag pushes,
-  or make each release by hand on GitHub from that file.
+- **Release v0.1.0 (pre-release)**: C47.g3a and its text are on the `builds` branch
+  (`v0.1.0/`); create the release by hand on GitHub (tools/release.py prints the steps).
 - **Report the fxlibc strchr bug** to fxlibc (Planet Casio's forge,
   `Vhex-Kernel-Core/fxlibc`): draft in `docs/fxlibc-strchr-report.md`.
 
@@ -35,8 +34,8 @@ is done or found. Newest decisions at the top of each section.
 
 - 2026-11-24: the CG50 toolchain prebuilt in the private repo fxprgm/cg-toolchain, restored
   by `tools/setup_env.py` (checked: same C47.g3a as with the source-built toolchain);
-  NEXT.md and CLAUDE.md; tools/release.py (pushing the tag is refused from cloud sessions, see
-  "Waiting on the user").
+  NEXT.md and CLAUDE.md; releases made by hand from the `builds` branch (tools/release.py);
+  the emulator's flash image in the private repo fxprgm/cg-flashfile.
 - 2026-11-23: DMCP's file browser and dialogs (`src/dmcp_ui.c`); fxlibc's strchr replaced;
   redraw after MENU and back; first run in the emulator on the real OS; display DMA bands
   aligned to 4 rows; big-endian test of upstream's suite; 396x224 layout; first build.

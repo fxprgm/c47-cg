@@ -46,9 +46,11 @@ then `Lephenixnoir/OpenLibm Vhex-Kernel-Core/fxlibc`, `Lephenixnoir/sh-elf-gcc` 
 
 ## Releasing
 
-`python3 tools/release.py X.Y.Z` (`--pre` for a pre-release): it builds C47.g3a here, puts it
-on the `builds` branch and pushes tag vX.Y.Z; `.github/workflows/release.yml` publishes the
-release. Versions: the last number for an upstream sync or a fix, the middle one for new
+Made by hand on GitHub (pushing tags is refused from cloud sessions).
+`python3 tools/release.py X.Y.Z` (`--pre` for a pre-release) builds C47.g3a from main, puts
+it with its release text on the `builds` branch (`vX.Y.Z/`) and prints the steps: the user
+downloads it and creates the release vX.Y.Z on GitHub. In a conversation, also send the user
+the file. Versions: the last number for an upstream sync or a fix, the middle one for new
 features.
 
 ## The emulator

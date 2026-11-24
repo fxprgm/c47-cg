@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Make a release: build C47.g3a here and publish it as GitHub release vVERSION.
+"""Prepare a release: build C47.g3a here and put it, with its notes, on the `builds` branch;
+the release itself is made by hand on GitHub (pushing tags is refused from the cloud
+sessions this is worked on).
 
     python tools/release.py 0.2.0            # a release
-    python tools/release.py 0.2.0 --pre      # a pre-release
+    python tools/release.py 0.2.0 --pre      # marked as a pre-release in the printed steps
 
-GitHub can't build the add-in in reasonable time (the CG50 toolchain takes over an hour to
-build), so it is built here and handed over through the `builds` branch: VERSION/C47.g3a and
-VERSION/NOTES.md are committed there, then tag vVERSION is pushed on main, and the workflow
-.github/workflows/release.yml attaches the file to the release.
+On the builds branch: vVERSION/C47.g3a, vVERSION/NOTES.md (the release text) and
+vVERSION/COMMIT (the main commit it was built from). Then, on GitHub: Releases, Draft a new
+release, tag vVERSION created on that commit (target main), title and text from NOTES.md,
+attach C47.g3a; the script prints these with the links.
 
 RELEASE_COMMIT_TRAILER, if set, is appended to the commits it makes.
 
 Steps: main must be clean and pushed; the version goes into CMakeLists.txt (committed and
 pushed if it changes); tools/sync_upstream.py, a clean fxsdk build-cg; the notes (this repo's
-commit, upstream's commit and version, size and SHA-256); the builds branch; the tag.
+commit, upstream's commit and version, size and SHA-256); the builds branch.
 """
 import hashlib
 import os
@@ -113,8 +115,7 @@ Copy C47.g3a to the calculator's storage memory and start C47 from the main menu
         os.makedirs(d, exist_ok=True)
         open(os.path.join(d, "C47.g3a"), "wb").write(g3a)
         open(os.path.join(d, "NOTES.md"), "w").write(notes)
-        if pre:
-            open(os.path.join(d, "PRERELEASE"), "w").write("")
+        open(os.path.join(d, "COMMIT"), "w").write(commit + "\n")
         email = git("config", "user.email")
         name = git("config", "user.name")
         git("add", "-A", cwd=tmp)
@@ -124,11 +125,13 @@ Copy C47.g3a to the calculator's storage memory and start C47 from the main menu
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
-    git("tag", "-a", tag, "-m", f"C47 for the fx-CG50 {tag}", capture=False)
-    push("origin", tag)
-    print(f"\n{tag}: pushed; the release appears at https://github.com/fxprgm/c47-cg/releases "
-          "once the workflow has run (a minute)")
-
+    blob = f"https://github.com/fxprgm/c47-cg/blob/builds/{tag}"
+    print(f"""
+{tag} is ready on the builds branch. To publish it on GitHub:
+  1. download {blob}/C47.g3a (Download raw file)
+  2. https://github.com/fxprgm/c47-cg/releases/new : tag {tag}, target {commit[:10]} (main),
+     title "C47 for the fx-CG50 {tag}", text from {blob}/NOTES.md,
+     attach C47.g3a{", tick 'Set as a pre-release'" if pre else ""}, Publish""")
 
 if __name__ == "__main__":
     main()
