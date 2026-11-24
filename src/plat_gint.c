@@ -191,7 +191,7 @@ void plat_rtc_read(plat_time_t *t) {
   rtc_time_t r;
   rtc_get_time(&r);
   t->year = r.year;
-  t->month = r.month + 1;
+  t->month = r.month;                      // 1..12, as the RTC counts (gint's header says 0..11; its code returns RMONCNT as is)
   t->day = r.month_day;
   t->hour = r.hours;
   t->minute = r.minutes;
@@ -205,7 +205,7 @@ void plat_rtc_write(const plat_time_t *t) {
   rtc_time_t r;
   rtc_get_time(&r);
   r.year = (uint16_t)t->year;
-  r.month = (uint8_t)(t->month - 1);
+  r.month = (uint8_t)t->month;
   r.month_day = (uint8_t)t->day;
   r.hours = (uint8_t)t->hour;
   r.minutes = (uint8_t)t->minute;
