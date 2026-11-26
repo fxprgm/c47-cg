@@ -12,6 +12,8 @@
  *     shot FILE     write the screen to FILE (.ppm); warns if C47 drew outside the 396x224 shown
  *     shotfull FILE write C47's whole 400x240 buffer to FILE (.ppm), what the CG50 doesn't show
  *                   (columns 396..399, rows 224..239) on a pink paper
+ *     lcd FILE      write C47's whole 400x240 buffer to FILE as it is, 1 bit a pixel (.pbm, black
+ *                   = set): the R47's own screen, for documentation (fxprgm/c47-manual)
  *     menu          press MENU (C47 saves its state, "goes to the main menu" and comes back)
  *     off           press SHIFT+AC/ON (the same, "switching off")
  *     quit          stop (also at the end of the script)
@@ -147,6 +149,30 @@ static void writeFullShot(const char *path) {
 }
 
 
+static void writeLcd(const char *path) {
+  plat_flush();
+  FILE *f = fopen(path, "wb");
+  if(!f) {
+    perror(path);
+    exit(2);
+  }
+  fprintf(f, "P4\n400 %d\n", SRC_ROWS);
+  for(int r = 0; r < SRC_ROWS; r++) {
+    const uint8_t *line = dmcp_shown_line(r);
+    unsigned char out[50] = {0};
+    for(int x = 0; x < 400; x++) {
+      int b = 399 - x;
+      if(!(line[b >> 3] >> (b & 7) & 1)) {
+        out[x >> 3] |= 0x80 >> (x & 7);
+      }
+    }
+    fwrite(out, 1, sizeof(out), f);
+  }
+  fclose(f);
+  fprintf(stderr, "[%6u ms] lcd %s\n", now, path);
+}
+
+
 // Run script lines until one has to wait (a key or `wait`) or the script ends.
 static void stepScript(void) {
   char line[256];
@@ -184,6 +210,9 @@ static void stepScript(void) {
     }
     else if(strcmp(cmd, "shotfull") == 0) {
       writeFullShot(strtok(NULL, " \t\r\n"));
+    }
+    else if(strcmp(cmd, "lcd") == 0) {
+      writeLcd(strtok(NULL, " \t\r\n"));
     }
     else if(strcmp(cmd, "quit") == 0) {
       exit(0);

@@ -38,6 +38,9 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-26: the PC build's `lcd FILE` writes C47's whole 400x240 screen as a 1-bit PBM, as the
+  R47 shows it: fxprgm/c47-manual builds this PC build without the layout patch as its
+  screenshot engine (its shots/engine.py).
 - 2026-11-26: OFF (f+EXIT) then AC/ON switched the calculator off again at once, or froze it
   with a key waiting (reported by a user on OS 3.81): waking from off, sys_sleep now clears
   STAT_SUSPENDED too, as DMCP does, so C47 runs its wake-up. Checked in the emulator, two
