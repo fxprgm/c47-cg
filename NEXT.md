@@ -38,6 +38,10 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-26: OFF (f+EXIT) then AC/ON switched the calculator off again at once, or froze it
+  with a key waiting (reported by a user on OS 3.81): waking from off, sys_sleep now clears
+  STAT_SUSPENDED too, as DMCP does, so C47 runs its wake-up. Checked in the emulator, two
+  off/on cycles. v0.1.2.
 - 2026-11-24: v0.1.1 (the month was shown one too high: gint's rtc month is 1..12) published
   by the workflow in 6 minutes, without building the toolchain; README screenshots from the
   emulator (docs/images, tests/readme_*.txt, tests/emu_keys.py); C47 on the fxprgm intro page

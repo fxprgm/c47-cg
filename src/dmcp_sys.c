@@ -7,8 +7,9 @@
  *   - sys_sleep() returns when a key is in the buffer, timer 0 has expired, or (with
  *     STAT_CLK_WKUP_ENABLE) the minute changed, which sets STAT_CLK_WKUP_FLAG;
  *   - the auto-off countdown (reset_auto_off) sets STAT_PGM_END when it runs out;
- *   - once C47 has gone off (STAT_OFF), sys_sleep waits for the ON key (EXIT) and clears
- *     STAT_PGM_END, which C47 never clears itself.
+ *   - once C47 has gone off (STAT_OFF and STAT_SUSPENDED), sys_sleep switches the calculator
+ *     off; when it is back on, sys_sleep clears STAT_PGM_END and STAT_SUSPENDED, as DMCP does
+ *     to wake a program, and C47 does the rest.
  */
 #include "c47.h"
 #include "plat.h"
@@ -235,13 +236,19 @@ static void doOsRequest(void) {
 void sys_sleep(void) {
   plat_flush();
 
-  if(ST(STAT_OFF)) {
-    // C47 switched off (OFF, or auto-off): switch the calculator off. It comes back on here.
+  if(ST(STAT_OFF) && ST(STAT_SUSPENDED)) {
+    // C47 switched off (OFF, or auto-off) and waits to be woken: switch the calculator off.
+    // It comes back on here. Waking a program from off, DMCP clears both STAT_PGM_END and
+    // STAT_SUSPENDED; C47's main loop then runs its own wake-up (LCD on, STAT_OFF cleared,
+    // redraw). With STAT_SUSPENDED left set, it never got there: it went back to sleep with
+    // STAT_OFF set, and the calculator switched off again at once, or, with a key waiting, it
+    // went round its loop without taking it.
     fnSaveAuto(0);
     plat_power_off();
     key_pop_all();
     redrawAfterSave();
     CLR_ST(STAT_PGM_END);
+    CLR_ST(STAT_SUSPENDED);
     autoOffStart = plat_ms();
     lastMinute = -1;
     return;
