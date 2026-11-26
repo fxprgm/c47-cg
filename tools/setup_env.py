@@ -57,7 +57,9 @@ def xlsxio():
         run(["git", "clone", "-q", "--depth", "1", "https://github.com/brechtsanders/xlsxio", tmp + "/src"])
         run(["cmake", "-S", tmp + "/src", "-B", tmp + "/b", "-DBUILD_SHARED=OFF",
              "-DBUILD_DOCUMENTATION=OFF", "-DBUILD_EXAMPLES=OFF", "-DWITH_LIBZIP=OFF",
-             "-DCMAKE_INSTALL_PREFIX=/usr/local"], stdout=subprocess.DEVNULL)
+             "-DCMAKE_INSTALL_PREFIX=/usr/local",
+             # xlsxio asks for CMake < 3.5, which CMake 4 refuses unless told this
+             "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"], stdout=subprocess.DEVNULL)
         run(["cmake", "--build", tmp + "/b", "-j", str(os.cpu_count() or 2)], stdout=subprocess.DEVNULL)
         run(["cmake", "--install", tmp + "/b"], stdout=subprocess.DEVNULL)
     finally:
