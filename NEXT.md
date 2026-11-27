@@ -38,6 +38,11 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-27: synced with C47 upstream cf13596e (21 commits: restore and export hardening,
+  matrix allocation bound, Raspberry on-screen keyboard, --ff option); the big-endian patch reworked
+  for the base check upstream added to short integer literals. PC build, key and layout scripts,
+  big-endian ppc (1,871 width failures on both CPUs, as before) and the emulator (start, keys,
+  save, load, MENU and back) all pass.
 - 2026-11-26: `tools/setup_env.py` builds xlsxio with CMake 4 (GitHub's ubuntu-latest has 4.2,
   which refuses xlsxio's `cmake_minimum_required` below 3.5): the release workflow's
   set-up step would have failed the same way on a runner without the cached toolchain.
