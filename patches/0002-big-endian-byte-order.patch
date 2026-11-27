@@ -1,8 +1,8 @@
 diff --git a/src/c47/config.c b/src/c47/config.c
-index 36f3dd9..e200742 100644
+index bdd2286a6..337d08bb9 100644
 --- a/src/c47/config.c
 +++ b/src/c47/config.c
-@@ -1529,7 +1529,12 @@ void addTestPrograms(void) {
+@@ -1550,7 +1550,12 @@ void addTestPrograms(void) {
      }
      else {
        UINT bytesRead;
@@ -16,7 +16,7 @@ index 36f3dd9..e200742 100644
        f_read(ppgm_fp, beginOfProgramMemory, numberOfBytesUsed,         &bytesRead);
        f_close(ppgm_fp);
  
-@@ -1550,7 +1555,9 @@ void addTestPrograms(void) {
+@@ -1571,7 +1576,9 @@ void addTestPrograms(void) {
        freeProgramBytes = numberOfBytesForTheTestPrograms - 2;
      }
      else {
@@ -28,7 +28,7 @@ index 36f3dd9..e200742 100644
        if(numberOfBytesUsed > numberOfBytesForTheTestPrograms) {
          printf("Increase allocated memory for programs! File config.c 1st line of function addTestPrograms\n");
 diff --git a/src/c47/mathematics/random.c b/src/c47/mathematics/random.c
-index 807b842..3617cdd 100644
+index 807b84200..3617cdd47 100644
 --- a/src/c47/mathematics/random.c
 +++ b/src/c47/mathematics/random.c
 @@ -204,7 +204,6 @@ void fnRandom(uint16_t unusedButMandatoryParameter) {
@@ -55,19 +55,19 @@ index 807b842..3617cdd 100644
    if(seed == 0 && sequ == 0) {
      #if defined(TESTSUITE_BUILD)
 diff --git a/src/c47/programming/decode.c b/src/c47/programming/decode.c
-index 110f709..3e3a2e5 100644
+index c7533a150..02efd6ad3 100644
 --- a/src/c47/programming/decode.c
 +++ b/src/c47/programming/decode.c
-@@ -564,7 +564,7 @@ static void decodeLiteral(uint8_t *literalAddress) {
-   switch(*(literalAddress++)) {
-     case BINARY_SHORT_INTEGER: {
-       reallocateRegister(TEMP_REGISTER_1, dtShortInteger, 0, *(uint8_t *)(literalAddress++));
+@@ -566,7 +566,7 @@ static void decodeLiteral(uint8_t *literalAddress) {
+       uint8_t base = *(literalAddress++);
+ 
+       reallocateRegister(TEMP_REGISTER_1, dtShortInteger, 0, isShortIntegerBase(base) ? base : 10);
 -      xcopy(getRegisterDataPointer(TEMP_REGISTER_1), literalAddress, TO_BYTES(SHORT_INTEGER_SIZE_IN_BLOCKS));
 +      *(REGISTER_SHORT_INTEGER_DATA(TEMP_REGISTER_1)) = programLiteralToUInt64(literalAddress);
        shortIntegerToDisplayString(TEMP_REGISTER_1, tmpString, false, noBaseOverride, SCREEN_WIDTH);
-       break;
-     }
-@@ -575,15 +575,15 @@ static void decodeLiteral(uint8_t *literalAddress) {
+       if(!isShortIntegerBase(base)) { // the digits are in base 10, and the ?? of a text literal without a base replaces the base 10 glyph
+         xcopy(tmpString + stringByteLength(tmpString) - 2, baseChars, 2);
+@@ -580,15 +580,15 @@ static void decodeLiteral(uint8_t *literalAddress) {
  
      case BINARY_REAL34: {
        real34_t realLiteral;
@@ -87,19 +87,19 @@ index 110f709..3e3a2e5 100644
        break;
      }
 diff --git a/src/c47/programming/lblGtoXeq.c b/src/c47/programming/lblGtoXeq.c
-index 4bc0884..23456e2 100755
+index a57bb98b4..8555b12d5 100755
 --- a/src/c47/programming/lblGtoXeq.c
 +++ b/src/c47/programming/lblGtoXeq.c
-@@ -601,7 +601,7 @@ static void _putLiteral(uint8_t *literalAddress) {
-       liftStack();
-       setSystemFlag(FLAG_ASLIFT);
-       reallocateRegister(REGISTER_X, dtShortInteger, 0, *(uint8_t *)(literalAddress++));
--      xcopy(getRegisterDataPointer(REGISTER_X), literalAddress, TO_BYTES(SHORT_INTEGER_SIZE_IN_BLOCKS));
-+      *(REGISTER_SHORT_INTEGER_DATA(REGISTER_X)) = programLiteralToUInt64(literalAddress);
-       break;
+@@ -604,7 +604,7 @@ static void _putLiteral(uint8_t *literalAddress) {
+         liftStack();
+         setSystemFlag(FLAG_ASLIFT);
+         reallocateRegister(REGISTER_X, dtShortInteger, 0, base);
+-        xcopy(getRegisterDataPointer(REGISTER_X), literalAddress, TO_BYTES(SHORT_INTEGER_SIZE_IN_BLOCKS));
++        *(REGISTER_SHORT_INTEGER_DATA(REGISTER_X)) = programLiteralToUInt64(literalAddress);
        }
- 
-@@ -611,7 +611,7 @@ static void _putLiteral(uint8_t *literalAddress) {
+       else {
+         displayCalcErrorMessage(ERROR_INVALID_INTEGER_INPUT, ERR_REGISTER_LINE);
+@@ -623,7 +623,7 @@ static void _putLiteral(uint8_t *literalAddress) {
  
        case BINARY_REAL34: {
        real34_t realLiteral;
@@ -108,7 +108,7 @@ index 4bc0884..23456e2 100755
        liftStack();
        setSystemFlag(FLAG_ASLIFT);
        convertReal34ToReal34Register(&realLiteral, REGISTER_X);
-@@ -623,8 +623,8 @@ static void _putLiteral(uint8_t *literalAddress) {
+@@ -635,8 +635,8 @@ static void _putLiteral(uint8_t *literalAddress) {
          liftStack();
          setSystemFlag(FLAG_ASLIFT);
          reallocateRegister(REGISTER_X, dtComplex34, 0, amNone);
@@ -120,7 +120,7 @@ index 4bc0884..23456e2 100755
          break;
        }
 diff --git a/src/c47/programming/manage.c b/src/c47/programming/manage.c
-index c5a9290..cb1577a 100644
+index d8a82befe..47de76998 100644
 --- a/src/c47/programming/manage.c
 +++ b/src/c47/programming/manage.c
 @@ -788,6 +788,39 @@ void fnPem(uint16_t unusedButMandatoryParameter) {
@@ -205,7 +205,7 @@ index c5a9290..cb1577a 100644
            doneWithBinaryLiteral = true;
          }
 diff --git a/src/c47/programming/manage.h b/src/c47/programming/manage.h
-index 595c4bc..6a264ce 100644
+index 595c4bc9d..6a264cef4 100644
 --- a/src/c47/programming/manage.h
 +++ b/src/c47/programming/manage.h
 @@ -36,6 +36,14 @@
@@ -224,10 +224,10 @@ index 595c4bc..6a264ce 100644
      return checkOpCodeOfStep(step, ITM_END);
    }
 diff --git a/src/c47/saveRestoreCalcState.c b/src/c47/saveRestoreCalcState.c
-index 1861fdd..94cde07 100644
+index c2bfd613a..0faa8d90f 100644
 --- a/src/c47/saveRestoreCalcState.c
 +++ b/src/c47/saveRestoreCalcState.c
-@@ -1229,7 +1229,8 @@ void doSave(uint16_t saveType) {
+@@ -1256,7 +1256,8 @@ void doSave(uint16_t saveType) {
    save(tmpString, strlen(tmpString));
  
    for(i=0; i<currentSizeInBlocks; i++) {
@@ -237,7 +237,7 @@ index 1861fdd..94cde07 100644
      save(tmpString, strlen(tmpString));
    }
  
-@@ -2698,12 +2699,13 @@ int64_t stringToInt64(const char *str) {
+@@ -2744,12 +2745,13 @@ int64_t stringToInt64(const char *str) {
          readLine(tmpString, TMP_STR_LENGTH); // One block
          // No end-of-file break here, on purpose: this loop writes into memory resizeProgramMemory() sized from the same count, and stopping short would leave
          // the tail of program memory holding whatever the resize left. The empty reads past end of file zero it instead, which is the safer of the two.
@@ -255,10 +255,10 @@ index 1861fdd..94cde07 100644
        }
  
 diff --git a/src/c47/screen.c b/src/c47/screen.c
-index 8231f9f..cb0a8ec 100644
+index b2d4dd21e..691d99a64 100644
 --- a/src/c47/screen.c
 +++ b/src/c47/screen.c
-@@ -6802,77 +6802,77 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
+@@ -6807,77 +6807,77 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
      fwrite("BM", 1, 2, bmp);        // Offset 0x00  0  BMP header
  
      uint32 = ((SCREEN_WIDTH/8 + 2) * yRows) + 0x82;
@@ -369,7 +369,7 @@ index 8231f9f..cb0a8ec 100644
  
      // Offset 0x82  bit map data
      uint16 = 0;
-@@ -6889,7 +6889,7 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
+@@ -6894,7 +6894,7 @@ void fnScreenDump(uint16_t unusedButMandatoryParameter) {
            uint8 = 0;
          }
        }
@@ -379,10 +379,10 @@ index 8231f9f..cb0a8ec 100644
  
  
 diff --git a/src/c47/screen.h b/src/c47/screen.h
-index 806b71a..ddfb796 100755
+index d0e91a330..ebf033ef0 100755
 --- a/src/c47/screen.h
 +++ b/src/c47/screen.h
-@@ -262,4 +262,16 @@
+@@ -263,4 +263,16 @@
    void     showShiftStateF                    (void);
    void     showShiftStateG                    (void);
    void     displayShiftAndTamBuffer           (void);
@@ -400,7 +400,7 @@ index 806b71a..ddfb796 100755
 +  #endif // PC_BUILD
  #endif // !SCREEN_H
 diff --git a/src/c47/softmenus.c b/src/c47/softmenus.c
-index a7dcd80..5fa2684 100644
+index 02ad9c583..f81a8e1ba 100644
 --- a/src/c47/softmenus.c
 +++ b/src/c47/softmenus.c
 @@ -4505,77 +4505,77 @@ void fnMenuDump(uint16_t menu, uint16_t item, uint16_t newFilenameformat, const
@@ -524,27 +524,27 @@ index a7dcd80..5fa2684 100644
  
  
 diff --git a/src/testSuite/testSuite.c b/src/testSuite/testSuite.c
-index ea1e596..1dfcc9f 100644
+index 72bf34c82..5ddcd7bab 100644
 --- a/src/testSuite/testSuite.c
 +++ b/src/testSuite/testSuite.c
-@@ -80,6 +80,7 @@ void covDerivErr(uint16_t which);
- void covSolveErr(uint16_t which);
+@@ -84,6 +84,7 @@ void covSolveErr(uint16_t which);
  void covLoadPgm(uint16_t unusedButMandatoryParameter);
  void covLoadPgmLongLabel(uint16_t unusedButMandatoryParameter);
+ void covRestoreWeekRule(uint16_t unusedButMandatoryParameter);
 +void covLoadLiteralPgm(uint16_t unusedButMandatoryParameter);
  void covLoadStateLongLabel(uint16_t unusedButMandatoryParameter);
  void covIterationTi(uint16_t which);
- void covComparisonTi(uint16_t which);
-@@ -342,6 +343,7 @@ const funcTest_t funcTestNoParam[] = {
+ void covExportLongLiteral(uint16_t unusedButMandatoryParameter);
+@@ -355,6 +356,7 @@ const funcTest_t funcTestNoParam[] = {
    {"fnErrThenUndoCov",           covErrThenUndo,              1 },
    {"fnMvarPageNoPgmCov",         covMvarPageNoProgram,        1 },
    {"fnLoadPgmLongLabelCov",      covLoadPgmLongLabel,         1 },
 +  {"fnLoadLiteralPgmCov",        covLoadLiteralPgm,           1 },
    {"fnLoadStateLongLabelCov",    covLoadStateLongLabel,       1 },
+   {"fnRestoreWeekRuleCov",       covRestoreWeekRule,          1 },
    {"fnIterationTiCov",           covIterationTi,              1 },
-   {"fnNamedVarFoldCov",          covNamedVariableFold,        1 },
-@@ -2701,6 +2703,21 @@ void covNamedVariableCache(uint16_t unusedButMandatoryParameter) {
-   }
+@@ -2924,6 +2926,21 @@ void covExportLongLiteral(uint16_t unusedButMandatoryParameter) {
+   int32ToReal34(correct ? 1 : 0, REGISTER_REAL34_DATA(REGISTER_X));
  }
  
 +void covLoadLiteralPgm(uint16_t unusedButMandatoryParameter) {
@@ -567,7 +567,7 @@ index ea1e596..1dfcc9f 100644
    // of at most 2 bytes, MAX_LABEL_NAME_LENGTH in defines.h); fnLoadProgram screens the file in a first pass,
 diff --git a/src/testSuite/tests/pgm_literal_endian.txt b/src/testSuite/tests/pgm_literal_endian.txt
 new file mode 100644
-index 0000000..a3c2996
+index 000000000..a3c29966f
 --- /dev/null
 +++ b/src/testSuite/tests/pgm_literal_endian.txt
 @@ -0,0 +1,13 @@
@@ -585,7 +585,7 @@ index 0000000..a3c2996
 +In:  FL_ASLIFT=1 RX=Real:"0" PGM="LT"
 +Out: EC=0 RZ=ShoI:"102030405060708#16" RY=Real:"2" RX=Cplx:"3 i 4"
 diff --git a/src/testSuite/tests/testSuiteList.txt b/src/testSuite/tests/testSuiteList.txt
-index 9954e3e..e19df22 100644
+index ead155431..f5d297c78 100644
 --- a/src/testSuite/tests/testSuiteList.txt
 +++ b/src/testSuite/tests/testSuiteList.txt
 @@ -490,6 +490,7 @@ tvm_cov
