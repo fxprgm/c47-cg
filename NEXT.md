@@ -38,6 +38,8 @@ is done or found. Newest decisions at the top of each section.
 
 ## Done (newest first)
 
+- 2026-11-27: README: "complete C47 firmware" up front, "Not done yet" became "Limitations"
+  (a Reddit reader took the old wording to mean the port was half done).
 - 2026-11-27: synced with C47 upstream cf13596e (21 commits: restore and export hardening,
   matrix allocation bound, Raspberry on-screen keyboard, --ff option); the big-endian patch reworked
   for the base check upstream added to short integer literals. PC build, key and layout scripts,
